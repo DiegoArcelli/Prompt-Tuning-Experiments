@@ -1,7 +1,23 @@
 from torch.utils.data import Dataset, RandomSampler
 from transformers import AutoTokenizer
 from torch.utils.data import DataLoader
-import time
+from transformers import BartModel
+import torch
+from torch import nn
+from torch import optim
+from torch.utils.data import random_split
+import random
+import numpy as np
+
+seed = 7
+
+torch.manual_seed(seed)
+random.seed(seed)
+np.random.seed(seed)
+
+
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 '''
 Takes in input the path of the datasets and it returnes a list where each element of
@@ -38,22 +54,42 @@ EPOCHS = 1
 BATCH_SIZE = 64
 
 
-model_name = "dbmdz/bert-base-italian-cased"
+model = BartModel.from_pretrained('facebook/bart-base')
+model.to(device)
+
 
 src_tokenizer = AutoTokenizer.from_pretrained("dbmdz/bert-base-italian-cased")
 dst_tokenizer = AutoTokenizer.from_pretrained('bert-base-cased')
 
-train_dataset = AnkiDataset("./../dataset/ita.txt", src_tokenizer, dst_tokenizer)
 
-train_dataloader = DataLoader(
-            train_dataset,  # The training samples.
-            batch_size = BATCH_SIZE # Trains with this batch size.
+data_set = AnkiDataset("./../dataset/ita.txt", src_tokenizer, dst_tokenizer)
+
+train_size = int(len(data_set)*0.8)
+test_size = len(data_set) - train_size
+train_set, test_set = random_split(data_set, [train_size, test_size])
+
+train_loader = DataLoader(
+            train_set,
+            batch_size = BATCH_SIZE
         )
+
+test_loader = DataLoader(
+            test_set,
+            batch_size = BATCH_SIZE
+        )
+
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=0.1)
 
 
 for epoch in range(1, EPOCHS+1):
 
-    for step, batch in enumerate(train_dataloader):
+    model.train()
+
+    for step, batch in enumerate(train_loader):
+
+        optimizer.zero_grad()
+
         inputs, targets = batch
-        inputs = src_tokenizer(list(inputs))
-        targets = dst_tokenizer(list(targets))
+        inputs = src_tokenizer(list(inputs), return_tensors='pt', padding=True, truncation=True).input_ids
+        targets = dst_tokenizer(list(targets), return_tensors='pt', padding=True, truncation=True).input_ids
