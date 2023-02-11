@@ -9,6 +9,7 @@ from torch import optim
 from torch.utils.data import random_split
 import random
 import numpy as np
+import time
 
 seed = 7
 
@@ -16,18 +17,6 @@ torch.manual_seed(seed)
 random.seed(seed)
 np.random.seed(seed)
 
-'''
-Takes in input the path of the datasets and it returnes a list where each element of
-the list is a list of the elment containing the english and italian sentence
-'''
-def get_data(data_path="./../dataset/ita.txt"):
-
-    with open(data_path, "r") as dataset:
-        sentences = dataset.readlines()
-
-    sentences = [tuple(sentence.split("\t")[:2]) for sentence in sentences]
-
-    return sentences
 
 class AnkiDataset(Dataset):
 
@@ -35,17 +24,35 @@ class AnkiDataset(Dataset):
         super().__init__()
         self.tokenizer_src = tokenizer_src
         self.tokenizer_dst = tokenizer_dst
-        sentences = get_data(data_path)
-        self.data = sentences
-        
+        self.data = self.get_data(data_path)
 
     def __len__(self):
         return len(self.data)
         
 
     def __getitem__(self, index):
-        return self.data[index]
 
+        sentence_src = self.data[0][index]
+        sentence_dst = self.data[1][index]
+
+        src = self.tokenizer_src.batch_encode_plus([sentence_src], max_length=512, pad_to_max_length=True, truncation=True, padding="max_length", return_tensors='pt')
+        dst = self.tokenizer_dst.batch_encode_plus([sentence_dst], max_length=512, pad_to_max_length=True, truncation=True, padding="max_length", return_tensors='pt')
+
+        return src, dst
+    
+
+    '''
+    Takes in input the path of the datasets and it returnes a list where each element of
+    the list is a list of the elment containing the english and italian sentence
+    '''
+    def get_data(self, data_path="./../dataset/ita.txt"):
+        with open(data_path, "r") as dataset:
+            sentences = [sentence.split("\t")[:2] for sentence in dataset.readlines()]
+
+        org = [x for [x, _] in sentences]
+        dst = [x for [_, x] in sentences]
+
+        return (org, dst)
 
 
 class Trainer:
@@ -60,13 +67,13 @@ class Trainer:
         # self.model.to(self.device)
 
         EPOCHS = 1
-        BATCH_SIZE = 64
+        BATCH_SIZE = 8
 
         src_tokenizer = AutoTokenizer.from_pretrained("dbmdz/bert-base-italian-cased")
         dst_tokenizer = AutoTokenizer.from_pretrained('bert-base-cased')
 
-
         data_set = AnkiDataset("./../dataset/ita.txt", src_tokenizer, dst_tokenizer)
+
 
         train_size = int(len(data_set)*0.8)
         test_size = len(data_set) - train_size
@@ -76,7 +83,7 @@ class Trainer:
                     train_set,
                     batch_size = BATCH_SIZE
                 )
-
+        
         test_loader = DataLoader(
                     test_set,
                     batch_size = BATCH_SIZE
@@ -96,17 +103,27 @@ class Trainer:
 
                 inputs, targets = batch
 
-                inputs = src_tokenizer(list(inputs), return_tensors='pt', padding=True, truncation=True).input_ids
-                targets = dst_tokenizer(list(targets), return_tensors='pt', padding=True, truncation=True).input_ids
+                print(batch)
 
-                outputs = model(inputs)
-                print(outputs.keys())
+                return
 
-                exit()
+                # outputs = model(inputs)
+                # print(outputs.keys())
+
+                # logits = outputs.logits
+
+                # print(logits.shape)
+
+                # # print(logits.view(-1, 50265).shape)
+                # # print(targets.view(-1).shape)
+
+                # exit()
+
+            
 
 
 
 # model = BartModel.from_pretrained('facebook/bart-base')
-model = BartForNMT(768, 32768)
+model = BartForNMT(768, 50265)
 trainer = Trainer(model)
 trainer.train()
