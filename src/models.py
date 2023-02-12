@@ -19,5 +19,18 @@ class BartForNMT(nn.Module):
 
 class Encoder(nn.Module):
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, input_dim, hidden_dim, output_dim, n_layers) -> None:
+        super(Encoder, self).__init__()
+        self.input_dim = input_dim
+        self.hidden_dim = hidden_dim
+        self.output_dim = output_dim
+        self.n_layers = n_layers
+        self.embedder = nn.Embedding(input_dim, hidden_dim)
+        self.encoder = nn.GRU(hidden_dim, output_dim, n_layers, bidirectional=True)
+
+
+    def forward(self, x):
+        x = self.embedder(x)
+        out, hidden = self.encoder(x)
+        return out, hidden
+        

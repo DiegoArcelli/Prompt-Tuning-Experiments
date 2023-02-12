@@ -32,7 +32,10 @@ class AnkiDataset(Dataset):
 
         src = self.tokenizer_src(src, max_length=20, pad_to_max_length=True, truncation=True, padding="max_length", return_tensors='pt')
         dst = self.tokenizer_dst(dst, max_length=20, pad_to_max_length=True, truncation=True, padding="max_length", return_tensors='pt')
-
+            
+        for key in src.keys():
+            src[key] = src[key][0]
+            dst[key] = dst[key][0]
 
         return (src, dst)
         
@@ -70,10 +73,8 @@ class Trainer:
         self.set_seeds(seed)
         # self.model.to(self.device)
 
-
-
         EPOCHS = 1
-        BATCH_SIZE = 8
+        BATCH_SIZE = 64
 
         src_tokenizer = AutoTokenizer.from_pretrained("dbmdz/bert-base-italian-cased")
         dst_tokenizer = AutoTokenizer.from_pretrained('bert-base-cased')
@@ -98,7 +99,7 @@ class Trainer:
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.Adam(model.parameters(), lr=0.1)
 
-
+        start = time.time()
         for epoch in range(1, EPOCHS+1):
 
             self.model.train()
@@ -109,17 +110,14 @@ class Trainer:
 
                 inputs, targets = batch
 
-                print(inputs)
-                print(targets)
+                # print(inputs.input_ids.shape)
+                # print(targets.input_ids.shape)
 
                 # print(inputs.input_ids.shape)
                 # print(targets.input_ids.shape)
 
-                return
-
-                # outputs = model(inputs)
-                # print(outputs.keys())
-
+                #outputs = model(input.input_ids)
+                #print(outputs.keys())
                 # logits = outputs.logits
 
                 # print(logits.shape)
@@ -128,6 +126,8 @@ class Trainer:
                 # # print(targets.view(-1).shape)
 
                 # exit()
+        end = time.time()
+        print(end-start)
 
             
 
