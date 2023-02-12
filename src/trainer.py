@@ -13,10 +13,6 @@ import time
 
 seed = 7
 
-torch.manual_seed(seed)
-random.seed(seed)
-np.random.seed(seed)
-
 
 class AnkiDataset(Dataset):
 
@@ -28,18 +24,19 @@ class AnkiDataset(Dataset):
 
     def __len__(self):
         return len(self.data)
-        
+    
 
     def __getitem__(self, index):
+        
+        src, dst = self.data[index]
 
-        sentence_src = self.data[0][index]
-        sentence_dst = self.data[1][index]
+        src = self.tokenizer_src(src, max_length=20, pad_to_max_length=True, truncation=True, padding="max_length", return_tensors='pt')
+        dst = self.tokenizer_dst(dst, max_length=20, pad_to_max_length=True, truncation=True, padding="max_length", return_tensors='pt')
 
-        src = self.tokenizer_src.batch_encode_plus([sentence_src], max_length=512, pad_to_max_length=True, truncation=True, padding="max_length", return_tensors='pt')
-        dst = self.tokenizer_dst.batch_encode_plus([sentence_dst], max_length=512, pad_to_max_length=True, truncation=True, padding="max_length", return_tensors='pt')
 
-        return src, dst
-    
+        return (src, dst)
+        
+
 
     '''
     Takes in input the path of the datasets and it returnes a list where each element of
@@ -47,12 +44,11 @@ class AnkiDataset(Dataset):
     '''
     def get_data(self, data_path="./../dataset/ita.txt"):
         with open(data_path, "r") as dataset:
-            sentences = [sentence.split("\t")[:2] for sentence in dataset.readlines()]
+            sentences = [tuple(sentence.split("\t")[:2]) for sentence in dataset.readlines()]
 
-        org = [x for [x, _] in sentences]
-        dst = [x for [_, x] in sentences]
+        return sentences
 
-        return (org, dst)
+    
 
 
 class Trainer:
@@ -62,9 +58,19 @@ class Trainer:
         self.model = model
 
 
-    def train(self):
+    
+    def set_seeds(self, seed):
+        torch.manual_seed(seed)
+        random.seed(seed)
+        np.random.seed(seed)
 
+
+    def train(self):
+        
+        self.set_seeds(seed)
         # self.model.to(self.device)
+
+
 
         EPOCHS = 1
         BATCH_SIZE = 8
@@ -103,7 +109,11 @@ class Trainer:
 
                 inputs, targets = batch
 
-                print(batch)
+                print(inputs)
+                print(targets)
+
+                # print(inputs.input_ids.shape)
+                # print(targets.input_ids.shape)
 
                 return
 
