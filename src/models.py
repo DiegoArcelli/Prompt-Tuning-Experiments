@@ -27,14 +27,13 @@ class Encoder(nn.Module):
     '''
     - input_dim: size of the vocabulary
     - hidden_dim: size of the embedding
-    - output_dim: size of the output of the GRU
     '''
-    def __init__(self, input_dim, hidden_dim, n_layers) -> None:
+    def __init__(self, vocab_dim, hidden_dim, n_layers) -> None:
         super(Encoder, self).__init__()
-        self.input_dim = input_dim
+        self.input_dim = vocab_dim
         self.hidden_dim = hidden_dim
         self.n_layers = n_layers
-        self.embedder = nn.Embedding(input_dim, hidden_dim)
+        self.embedder = nn.Embedding(vocab_dim, hidden_dim)
         self.encoder = nn.GRU(hidden_dim, hidden_dim, n_layers, bidirectional=False)
 
 
@@ -78,4 +77,19 @@ class Decoder(nn.Module):
         out, weights = self.attention(x, context)
         logits = self.output(out)
 
+        return logits, state
+
+
+
+class Seq2Seq(nn.Module):
+
+
+    def __init__(self, vocab_dim, hidden_dim, enc_n_layers, dec_n_layers, n_heads) -> None:
+        super(Seq2Seq, self).__init__()
+        self.encoder = Encoder(vocab_dim, hidden_dim, enc_n_layers)
+        self.decoder = Decoder(vocab_dim, hidden_dim, dec_n_layers, n_heads)
+
+    def forward(self, x, y):
+        context, _ = self.encoder(x)
+        logits, state = self.decoder(y, context)
         return logits, state

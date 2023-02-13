@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 import torch.functional as F
-from models import Decoder, Encoder
+from models import Decoder, Encoder, Seq2Seq
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -21,3 +21,9 @@ print("Encoder output", c.shape)
 logits, state = dec(y, c)
 print("Decoder state: ", state.shape)
 print("Decoder output: ", logits.shape)
+
+
+model = Seq2Seq(vocab_size, 256, 1, 1, 1)
+logits, state = model(x, y)
+print("Logits: ", logits.shape)
+print("State: ", state.shape)
