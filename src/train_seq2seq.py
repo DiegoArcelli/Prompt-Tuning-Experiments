@@ -24,4 +24,7 @@ model = Seq2Seq(
 
 src_tokenizer = AutoTokenizer.from_pretrained("dbmdz/bert-base-italian-cased")
 dst_tokenizer = AutoTokenizer.from_pretrained('bert-base-cased')
-trainer = Seq2SeqTrainer(src_tokenizer, dst_tokenizer, config)
+trainer = Seq2SeqTrainer(model, src_tokenizer, dst_tokenizer, config)
+
+print(model)
+trainer.train()

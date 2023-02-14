@@ -13,7 +13,7 @@ import time
 
 class AnkiDataset(Dataset):
 
-    def __init__(self, data_path, tokenizer_src, tokenizer_dst) -> None:
+    def __init__(self, data_path, tokenizer_src, tokenizer_dst, src_max_length, dst_max_length) -> None:
         super().__init__()
         self.tokenizer_src = tokenizer_src
         self.tokenizer_dst = tokenizer_dst
@@ -177,5 +177,11 @@ class Seq2SeqTrainer(Trainer):
                 optimizer.zero_grad()
 
                 inputs, targets = batch
+
+                logits, state = self.model(inputs.input_ids, targets.input_ids)
+                print(logits.shape)
+                print(state.shape)
+
+
 
                 return

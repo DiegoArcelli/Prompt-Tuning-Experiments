@@ -1,6 +1,6 @@
 from transformers import BartModel
 from torch import nn
-
+import torch
 
 class BartForNMT(nn.Module):
 
@@ -27,6 +27,7 @@ class Encoder(nn.Module):
     '''
     - input_dim: size of the vocabulary
     - hidden_dim: size of the embedding
+    - n_layers: number of layers of the GRU
     '''
     def __init__(self, vocab_dim, hidden_dim, n_layers) -> None:
         super(Encoder, self).__init__()
@@ -34,12 +35,44 @@ class Encoder(nn.Module):
         self.hidden_dim = hidden_dim
         self.n_layers = n_layers
         self.embedder = nn.Embedding(vocab_dim, hidden_dim)
-        self.encoder = nn.GRU(hidden_dim, hidden_dim, n_layers, bidirectional=False)
+        self.encoder = nn.GRU(hidden_dim, hidden_dim, n_layers, bidirectional=True)
+        self.linear = nn.Linear(hidden_dim*2, hidden_dim)
 
 
     def forward(self, x):
+
+        '''
+        Embedder receives as input a tensor (batch_size, length) and returns
+        a tensor of size (batch_size, length, hidden_dim)
+        '''
         x = self.embedder(x)
+
+        '''
+        The encoder receives as input a tensor of size (batch_size, length, hidden_dim)
+        and returns two tensors:
+        - The output for each input of size (batch_size, length, 2*hidden_dim)
+        - The hidden state of each layer of size (2*num_layers, length, hidden_dim)
+        '''
         out, hidden = self.encoder(x)
+
+        '''
+        We concatenate the last hidden sates of the left-to-right and the right-to-left
+        layers of the GRU to get a single hidden state tensor of size (length, 2*hidden_dim)
+        '''
+        hidden_cat = torch.cat((hidden[-2, : ,:], hidden[-1, :, :]), dim=1)
+
+        '''
+        We use a linear layer with a tanh activation function to map the last hidden state of
+        size (length, 2*hidden_dim) to a tensor of size (length, hidden_dim)
+        '''
+        hidden = torch.tanh(self.linear(hidden_cat))
+
+
+        '''
+        We return:
+        - The output of the GRU of size (batch_size, length, hidden_dim)
+        - The mapping of the internal hidden state of the GRU of size (length, hidden_dim)
+        '''
         return out, hidden
     
 
@@ -54,7 +87,6 @@ class AttentionLayer(nn.Module):
     def forward(self, input, context):
         out, weights = self.mha(context, input, input)
         return out, weights
-
 
 
 class Decoder(nn.Module):
