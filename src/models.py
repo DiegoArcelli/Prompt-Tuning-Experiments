@@ -84,10 +84,10 @@ class Decoder(nn.Module):
 class Seq2Seq(nn.Module):
 
 
-    def __init__(self, vocab_dim, hidden_dim, enc_n_layers, dec_n_layers, n_heads) -> None:
+    def __init__(self, enc_vocab_dim, dec_vocab_dim, hidden_dim, enc_n_layers, dec_n_layers, n_heads) -> None:
         super(Seq2Seq, self).__init__()
-        self.encoder = Encoder(vocab_dim, hidden_dim, enc_n_layers)
-        self.decoder = Decoder(vocab_dim, hidden_dim, dec_n_layers, n_heads)
+        self.encoder = Encoder(enc_vocab_dim, hidden_dim, enc_n_layers)
+        self.decoder = Decoder(dec_vocab_dim, hidden_dim, dec_n_layers, n_heads)
 
     def forward(self, x, y):
         context, _ = self.encoder(x)

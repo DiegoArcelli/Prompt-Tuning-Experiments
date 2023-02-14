@@ -15,3 +15,6 @@ dst = max([len(dst_tokenizer(x).input_ids) for x in sentences_dst])
 
 print("Max length source: ", src)
 print("Max length destination: ", dst)
+
+print("Source tokenizer vocabulary size: ", src_tokenizer.vocab_size)
+print("Destination tokenizer vocabulary size: ", dst_tokenizer.vocab_size)
