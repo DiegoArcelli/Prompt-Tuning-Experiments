@@ -1,6 +1,7 @@
 from transformers import BartModel
-from torch import nn
 import torch
+from torch import nn
+import torch.nn.functional as F
 
 class BartForNMT(nn.Module):
 
@@ -39,6 +40,16 @@ class Encoder(nn.Module):
         self.linear = nn.Linear(hidden_dim*2, hidden_dim)
 
 
+    '''
+    Forward pass of the encoder
+
+    Input:
+    - x: a tensor of size (batch_size, length) which contains the tokenized sentences
+
+    Output:
+    - out: the output of the GRU of size (batch_size, length, hidden_dim)
+    - hidden: the internal state of the last GRU layer of size (length, hidden_dim)
+    '''
     def forward(self, x):
 
         '''
@@ -67,26 +78,60 @@ class Encoder(nn.Module):
         '''
         hidden = torch.tanh(self.linear(hidden_cat))
 
-
         '''
         We return:
         - The output of the GRU of size (batch_size, length, hidden_dim)
         - The mapping of the internal hidden state of the GRU of size (length, hidden_dim)
         '''
         return out, hidden
-    
 
 
 class AttentionLayer(nn.Module):
-
     
-    def __init__(self, embedded_dim, n_heads) -> None:
+    def __init__(self, enc_hidden_dim, dec_hidden_dim) -> None:
         super(AttentionLayer, self).__init__()
-        self.mha = nn.MultiheadAttention(embedded_dim, n_heads)
+        self.enc_hidden_dim = enc_hidden_dim
+        self.dec_hidden_dim = dec_hidden_dim
+        
+        self.score = nn.Linear(2*enc_hidden_dim + dec_hidden_dim, dec_hidden_dim)
+        self.v = nn.Linear(dec_hidden_dim, 1, bias = False)
 
-    def forward(self, input, context):
-        out, weights = self.mha(context, input, input)
-        return out, weights
+
+    '''
+    Forward pass of the attention layer
+
+    Input:
+    - dec_hidden: the hidden state of the decoder at time t-1
+                  which is a tensor of size (batch_size, dec_hidden_dim) 
+    - enc_output: the hidden states of the encoder at each time step
+                  which is a tensor of size (batch_size, length, 2*enc_hidden_dim)
+
+
+    Output:
+
+    '''
+    def forward(self, dec_hidden, enc_output):
+
+        # sequence length of the source
+        src_len = enc_output.shape[1]
+
+        '''
+        dec_hidden state is repreated src_len times and it 
+        becomes a tensor of shape (batch_size, length, length, dec_hidden_dim)
+        '''
+        dec_hidden = dec_hidden.unsqueeze(1).repeat(1, src_len, 1)
+
+
+        '''
+        we compute the scores of each encoder hidden state with the corresponding 
+        '''
+        hidden_cat = torch.tanh( torch.cat((dec_hidden, enc_output), dim = 2) )
+        energy = self.score(hidden_cat)
+        attention = self.v(energy).squeeze(2)
+        norm_attention =  F.softmax(attention, dim=1)
+
+        return norm_attention
+
 
 
 class Decoder(nn.Module):
@@ -107,6 +152,7 @@ class Decoder(nn.Module):
         x = self.embedder(x)
         x, state = self.decoder(x)
         out, weights = self.attention(x, context)
+        print(out.shape, weights.shape)
         logits = self.output(out)
 
         return logits, state
@@ -116,10 +162,18 @@ class Decoder(nn.Module):
 class Seq2Seq(nn.Module):
 
 
-    def __init__(self, enc_vocab_dim, dec_vocab_dim, hidden_dim, enc_n_layers, dec_n_layers, n_heads) -> None:
+    def __init__(self, enc_vocab_dim, dec_vocab_dim, enc_hidden_dim, dec_hidden_dim, enc_n_layers, dec_n_layers, n_heads) -> None:
         super(Seq2Seq, self).__init__()
-        self.encoder = Encoder(enc_vocab_dim, hidden_dim, enc_n_layers)
-        self.decoder = Decoder(dec_vocab_dim, hidden_dim, dec_n_layers, n_heads)
+        self.enc_vocab_dim = enc_vocab_dim
+        self.dec_vocab_dim = dec_vocab_dim
+        self.enc_hidden_dim = enc_hidden_dim
+        self.dec_hidden_dim = dec_hidden_dim
+        self.enc_n_layers = enc_n_layers
+        self.dec_n_layers = dec_n_layers
+        self.n_heads =  n_heads
+
+        self.encoder = Encoder(enc_vocab_dim, enc_hidden_dim, enc_n_layers)
+        self.decoder = Decoder(dec_vocab_dim, dec_hidden_dim, dec_n_layers, n_heads)
 
     def forward(self, x, y):
         context, _ = self.encoder(x)
