@@ -18,10 +18,9 @@ class BartForNMT(nn.Module):
         
 
 '''
-Encoder of the seq2seq model
-It uses and Embedding layer to map the words of each input sentence to vector
-and then the embedding are passed to a Bidirectional GRU to produce 
-the context vector for the decoder
+Implementation of the sequence2sequence model as descriped in the paper:
+Neural Machine Translation by Jointly Learning to Align and Translate
+(https://arxiv.org/abs/1409.0473)
 '''
 class Encoder(nn.Module):
 
@@ -98,7 +97,11 @@ class AttentionLayer(nn.Module):
 
 
     '''
-    Forward pass of the attention layer
+    Forward pass of the attention layer. The attention layers computes the energy scores e_{i,j}:
+    e_{i,j} = V^T*tanh(W*[s_{i-1}|h_j])
+    where s_{i-1} is the output of the encoder at time i-1 and h_j is the state of the encoder at time j
+    Then it normalizes them them using the softmax to return the attention coefficients:
+    alpha_{i,j} = exp(e_{i,j}) / sum_k(exp(e_{i,k}))
 
     Input:
     - dec_hidden: the hidden state of the decoder at time t-1
@@ -106,9 +109,8 @@ class AttentionLayer(nn.Module):
     - enc_output: the hidden states of the encoder at each time step
                   which is a tensor of size (batch_size, length, 2*enc_hidden_dim)
 
-
     Output:
-
+    - attention: the attention scores of size (batch_size, length)
     '''
     def forward(self, dec_hidden, enc_output):
 
@@ -116,43 +118,61 @@ class AttentionLayer(nn.Module):
         src_len = enc_output.shape[1]
 
         '''
-        dec_hidden state is repreated src_len times and it 
-        becomes a tensor of shape (batch_size, length, length, dec_hidden_dim)
+        dec_hidden state is repeated src_len times and it 
+        becomes a tensor of shape (batch_size, length, dec_hidden_dim)
         '''
         dec_hidden = dec_hidden.unsqueeze(1).repeat(1, src_len, 1)
 
+        '''
+        The output of the encoder and the repeated hidden state of the decoder
+        to obtain a tensor of size (batch_size, length, 2*enc_hidden_dim + dec_hidden_dim)
+        '''
+        hidden_cat = torch.cat((dec_hidden, enc_output), dim = 2)
+        
+        '''
+        First part of the energy computation: tanh(W*[s_{i-1}|h_j])
+        which returns a tensor of size (batch_size, length, dec_hidden_dim) 
+        '''
+        energy = torch.tanh(self.score(hidden_cat))
 
         '''
-        we compute the scores of each encoder hidden state with the corresponding 
+        Final part of the energy computation: V^T * tanh(W*[s_{i-1}|h_j])
+        It returns a tensor of size (batch_size, length, 1), therefore we use
+        the squeeze to change te size to (batch_size, length)
         '''
-        hidden_cat = torch.tanh( torch.cat((dec_hidden, enc_output), dim = 2) )
-        energy = self.score(hidden_cat)
-        attention = self.v(energy).squeeze(2)
-        norm_attention =  F.softmax(attention, dim=1)
+        energy = self.v(energy).squeeze(2)
 
-        return norm_attention
-
+        '''
+        We compute the alphas applying the softmax to the energy scores
+        as a tensor of size (batch_size, length). Each alpha[i, :] is 
+        a tensor of size (length) which are the attention coefficients
+        for the i-th sentence of the batch with respect to the current
+        state of the decoder
+        '''
+        alpha =  F.softmax(energy, dim=1)
+        
+        return alpha
 
 
 class Decoder(nn.Module):
 
-    def __init__(self, vocab_dim, hidden_dim, n_layers, n_heads) -> None:
+    def __init__(self, vocab_dim, enc_hidden_dim, dec_hidden_dim, n_layers) -> None:
         super(Decoder, self).__init__()
         self.input_dim = vocab_dim
-        self.hidden_dim = hidden_dim
+        self.enc_hidden_dim = enc_hidden_dim
+        self.dec_hidden_dim = dec_hidden_dim
         self.n_layers = n_layers
-        self.n_heads = n_heads
 
-        self.embedder = nn.Embedding(vocab_dim, hidden_dim)
-        self.decoder = nn.GRU(hidden_dim, hidden_dim, n_layers, bidirectional=False)
-        self.attention = AttentionLayer(hidden_dim, n_heads)
-        self.output = nn.Linear(hidden_dim, vocab_dim)
+        self.embedder = nn.Embedding(vocab_dim, dec_hidden_dim)
+        self.decoder = nn.GRU(dec_hidden_dim, dec_hidden_dim, n_layers, bidirectional=False)
+        self.attention = AttentionLayer(enc_hidden_dim, dec_hidden_dim)
+        self.output = nn.Linear(2*enc_hidden_dim  + dec_hidden_dim, vocab_dim)
 
     def forward(self, x, context):
         x = self.embedder(x)
         x, state = self.decoder(x)
         out, weights = self.attention(x, context)
-        print(out.shape, weights.shape)
+        # print(out.shape, weights.shape)
         logits = self.output(out)
 
         return logits, state

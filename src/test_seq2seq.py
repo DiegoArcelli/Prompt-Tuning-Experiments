@@ -38,4 +38,4 @@ y = torch.randn(batch_size, 20, 256)
 
 attn = AttentionLayer(128, 128)
 
-attn(x, y)
+alphas = attn(x, y)
