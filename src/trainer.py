@@ -17,6 +17,8 @@ class AnkiDataset(Dataset):
         super().__init__()
         self.tokenizer_src = tokenizer_src
         self.tokenizer_dst = tokenizer_dst
+        self.src_max_length = src_max_length
+        self.dst_max_length = dst_max_length
         self.data = self.get_data(data_path)
 
     def __len__(self):
@@ -27,8 +29,8 @@ class AnkiDataset(Dataset):
         
         src, dst = self.data[index]
 
-        src = self.tokenizer_src(src, max_length=20, pad_to_max_length=True, truncation=True, padding="max_length", return_tensors='pt')
-        dst = self.tokenizer_dst(dst, max_length=20, pad_to_max_length=True, truncation=True, padding="max_length", return_tensors='pt')
+        src = self.tokenizer_src(src, max_length=self.src_max_length, pad_to_max_length=True, truncation=True, padding="max_length", return_tensors='pt')
+        dst = self.tokenizer_dst(dst, max_length=self.dst_max_length, pad_to_max_length=True, truncation=True, padding="max_length", return_tensors='pt')
             
         for key in src.keys():
             src[key] = src[key][0]
@@ -76,7 +78,12 @@ class Trainer:
         epochs = self.config["max_epochs"]
         batch_size = self.config["batch_size"]
 
-        data_set = AnkiDataset("./../dataset/ita.txt", self.src_tokenizer, self.dst_tokenizer)
+        data_set = AnkiDataset("./../dataset/ita.txt",
+                               self.src_tokenizer,
+                               self.dst_tokenizer,
+                               self.config["src_max_length"],
+                               self.config["dst_max_length"]
+                               )
 
 
         train_size = int(len(data_set)*0.8)
@@ -106,8 +113,6 @@ class Trainer:
                 optimizer.zero_grad()
 
                 inputs, targets = batch
-
-                print("AAAAAAAAAAAAAAAAaa")
 
                 return
 
@@ -148,7 +153,12 @@ class Seq2SeqTrainer(Trainer):
         epochs = self.config["max_epochs"]
         batch_size = self.config["batch_size"]
 
-        data_set = AnkiDataset("./../dataset/ita.txt", self.src_tokenizer, self.dst_tokenizer)
+        data_set = AnkiDataset("./../dataset/ita.txt",
+                               self.src_tokenizer,
+                               self.dst_tokenizer,
+                               self.config["src_max_length"],
+                               self.config["dst_max_length"]
+                               )
 
 
         train_size = int(len(data_set)*0.8)
@@ -178,10 +188,12 @@ class Seq2SeqTrainer(Trainer):
 
                 inputs, targets = batch
 
-                logits, state = self.model(inputs.input_ids, targets.input_ids)
-                print(logits.shape)
-                print(state.shape)
+                input_ids = inputs.input_ids.permute(1, 0)
+                target_ids = targets.input_ids.permute(1, 0)
 
-
+                print(input_ids.shape)
+                print(target_ids.shape)
+                output = self.model(input_ids, target_ids)
+                print(output.shape)
 
                 return
