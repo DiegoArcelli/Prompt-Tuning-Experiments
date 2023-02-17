@@ -7,22 +7,29 @@ import torch
 from torch import nn
 
 
-model = nn.GRU(10, 5, 3, bidirectional=False)
-print(model)
 
-print("Model paramters:")
+batch_size = 64
+seq_len = 20
+in_dim = 10
+hidden_dim = 5
+n_layers = 2
+# print(model)
 
-# basically the input 
+# print("Model paramters:")
 
-for param in model.named_parameters():
-    print(param[0] + ":")
-    print(param[1].shape)
-    print("\n")
+# # basically the input 
+
+# for param in model.named_parameters():
+#     print(param[0] + ":")
+#     print(param[1].shape)
+#     print("\n")
 
 
-x = torch.randn(20, 10)
-y = model(x)
+model = nn.GRU(in_dim, hidden_dim, n_layers, bidirectional=False)
 
-# 
-print(y[0].shape)
-print(y[1].shape)
+x = torch.randn(batch_size, seq_len, in_dim)
+hid = torch.randn(n_layers, seq_len, hidden_dim)
+out, hidden = model(x, hid)
+
+print("Output: ", out.shape)
+print("Hidden: ", hidden.shape)

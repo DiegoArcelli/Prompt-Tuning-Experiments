@@ -22,6 +22,10 @@ Implementation of the sequence2sequence model as descriped in the paper:
 Neural Machine Translation by Jointly Learning to Align and Translate
 (https://arxiv.org/abs/1409.0473)
 '''
+
+'''
+Encoder of the sequence to sequence model implemented using a bidirectional GRU
+'''
 class Encoder(nn.Module):
 
     '''
@@ -43,24 +47,24 @@ class Encoder(nn.Module):
     Forward pass of the encoder
 
     Input:
-    - x: a tensor of size (batch_size, length) which contains the tokenized sentences
+    - x: a tensor of size (length, batch_size) which contains the tokenized sentences
 
     Output:
-    - out: the output of the GRU of size (batch_size, length, hidden_dim)
+    - out: the output of the GRU of size (length, batch_size, hidden_dim)
     - hidden: the internal state of the last GRU layer of size (length, hidden_dim)
     '''
     def forward(self, x):
 
         '''
-        Embedder receives as input a tensor (batch_size, length) and returns
-        a tensor of size (batch_size, length, hidden_dim)
+        Embedder receives as input a tensor (length, batch_size) and returns
+        a tensor of size (length, batch_size, hidden_dim)
         '''
         x = self.embedder(x)
 
         '''
-        The encoder receives as input a tensor of size (batch_size, length, hidden_dim)
+        The GRU receives as input a tensor of size (length, batch_size, hidden_dim)
         and returns two tensors:
-        - The output for each input of size (batch_size, length, 2*hidden_dim)
+        - The output for each input of size (length, batch_size, 2*hidden_dim)
         - The hidden state of each layer of size (2*num_layers, length, hidden_dim)
         '''
         out, hidden = self.encoder(x)
@@ -79,7 +83,7 @@ class Encoder(nn.Module):
 
         '''
         We return:
-        - The output of the GRU of size (batch_size, length, hidden_dim)
+        - The output of the GRU of size (length, batch_size, hidden_dim)
         - The mapping of the internal hidden state of the GRU of size (length, hidden_dim)
         '''
         return out, hidden
@@ -107,7 +111,7 @@ class AttentionLayer(nn.Module):
     - dec_hidden: the hidden state of the decoder at time t-1
                   which is a tensor of size (batch_size, dec_hidden_dim) 
     - enc_output: the hidden states of the encoder at each time step
-                  which is a tensor of size (batch_size, length, 2*enc_hidden_dim)
+                  which is a tensor of size (length, batch_size, 2*enc_hidden_dim)
 
     Output:
     - attention: the attention scores of size (batch_size, length)
@@ -115,13 +119,19 @@ class AttentionLayer(nn.Module):
     def forward(self, dec_hidden, enc_output):
 
         # sequence length of the source
-        src_len = enc_output.shape[1]
+        src_len = enc_output.shape[0]
 
         '''
         dec_hidden state is repeated src_len times and it 
         becomes a tensor of shape (batch_size, length, dec_hidden_dim)
         '''
         dec_hidden = dec_hidden.unsqueeze(1).repeat(1, src_len, 1)
+
+        '''
+        enc_ouput is reshaped from (length, batch_size, 2*enc_hidden_dim)
+        to (batch_size, length, 2*enc_hidden_dim)
+        '''
+        enc_output = enc_output.permute(1, 0, 2)
 
         '''
         The output of the encoder and the repeated hidden state of the decoder
@@ -149,11 +159,33 @@ class AttentionLayer(nn.Module):
         for the i-th sentence of the batch with respect to the current
         state of the decoder
         '''
-        alpha =  F.softmax(energy, dim=1)
-        
-        return alpha
+        alpha = F.softmax(energy, dim=1)
+
+        '''
+        We reshape alpha from (batch_size, length) to (batch_size, 1, length)
+        '''
+        alpha = alpha.unsqueeze(1)
 
 
+        '''
+        We compute the attentions scores which are a tensor of size
+        (batch_size, 1, 2*enc_hidden_dim)
+        '''
+        attention = torch.bmm(alpha, enc_output)
+
+        '''
+        We reshape attention from (batch_size, 1, 2*enc_hidden_dim) to 
+        (batch_size, 2*enc_hidden_dim)
+        '''
+        attention = attention.squeeze(1)
+
+        return attention
+
+
+
+'''
+Decoder of the sequence to sequence model implemented using a GRU
+'''
 class Decoder(nn.Module):
 
     def __init__(self, vocab_dim, enc_hidden_dim, dec_hidden_dim, n_layers) -> None:
@@ -164,18 +196,91 @@ class Decoder(nn.Module):
         self.n_layers = n_layers
 
         self.embedder = nn.Embedding(vocab_dim, dec_hidden_dim)
-        self.decoder = nn.GRU(dec_hidden_dim, dec_hidden_dim, n_layers, bidirectional=False)
+        self.decoder = nn.GRU(2*enc_hidden_dim  + dec_hidden_dim, dec_hidden_dim, n_layers, bidirectional=False)
         self.attention = AttentionLayer(enc_hidden_dim, dec_hidden_dim)
-        self.output = nn.Linear(2*enc_hidden_dim  + dec_hidden_dim, vocab_dim)
+        self.fc_out = nn.Linear(2*(enc_hidden_dim  + dec_hidden_dim), vocab_dim)
 
-    def forward(self, x, context):
-        x = self.embedder(x)
-        x, state = self.decoder(x)
-        out, weights = self.attention(x, context)
-        # print(out.shape, weights.shape)
-        logits = self.output(out)
 
-        return logits, state
+    '''
+    Forward pass of the decoder of the sequence to sequence model
+
+    Input:
+    - input: the ground-truth token that should be predicted by the decoder,
+      which a tensor of shape (batch_size)
+
+    - dec_hidden: the hidden state of the decoder at time t-1
+      which is a tensor of size (batch_size, dec_hidden_dim) 
+
+    - enc_output: the hidden states of the encoder at each time step
+      which is a tensor of size (length, batch_size, 2*enc_hidden_dim)
+
+    Output:
+    - logits: the logits produced by the decoder which is a tensor of size (batch_size, voc_dim)
+    - hidden: the next hidden state of the decoder of size (batch_size, dec_hidden_dim) 
+    '''
+    def forward(self, input, dec_hidden, enc_output):
+
+        '''
+        We reshape input from (batch_size) to (1, batch_size)
+        '''
+
+        '''
+        We compute the word embedding of the input, which is a tensor of shape
+        (batch_size, dec_hidden_dim)
+        '''
+        embedded = self.embedder(input)
+
+        '''
+        We compute the attention scores which are a tensor of shape (batch_size, 2*enc_hidden_dim)
+        '''
+        attention = self.attention(dec_hidden, enc_output)
+        
+        '''
+        We concatenate the attention tensor with the  embedded tensor to get
+        a tensor of size (batch_size, 2*enc_hidden_dim  + dec_hidden_dim)
+        '''
+        gru_input = torch.concat((embedded, attention), dim=1)
+
+        '''
+        We reshape gru_input from (batch_size, 2*enc_hidden_dim  + dec_hidden_dim)
+        to (1, batch_size, 2*enc_hidden_dim  + dec_hidden_dim)
+        '''
+        gru_input = gru_input.unsqueeze(0)
+
+        '''
+        We reshape dec_hidden from (batch_size, dec_hidden_dim) to (1, batch_size, dec_hidden_dim) 
+        '''
+        dec_hidden = dec_hidden.unsqueeze(0)
+
+
+        '''
+        We pass to the GRU the tensor obtained concatenating the attention score and the
+        encoder output, and the previous decoder hidden state, and we get to output tensors
+        both of size (1, batch_size, dec_hidden_dim)
+        '''
+        output, hidden = self.decoder(gru_input, dec_hidden)
+
+
+        '''
+        We reshape output and hidden from (1, batch_size, dec_hidden_dim)
+        to (batch_size, dec_hidden_dim)
+        '''
+        output = output.squeeze(0)
+        hidden = hidden.squeeze(0)
+
+
+        '''
+        We concatenate the attention scores, the output of the GRU and the embedded of the
+        input sequence to get a tensor of size (batch_size, 2*enc_hidden_dim  + 2*dec_hidden_dim)
+        '''
+        fc_input = torch.concat((output, attention, embedded), dim=1)
+
+        '''
+        We compute the logits which is a tensor of size (batch_size, voc_dim)
+        '''
+        logits = self.fc_out(fc_input)
+
+        return logits, hidden
 
 
 
@@ -195,7 +300,5 @@ class Seq2Seq(nn.Module):
         self.encoder = Encoder(enc_vocab_dim, enc_hidden_dim, enc_n_layers)
         self.decoder = Decoder(dec_vocab_dim, dec_hidden_dim, dec_n_layers, n_heads)
 
-    def forward(self, x, y):
-        context, _ = self.encoder(x)
-        logits, state = self.decoder(y, context)
-        return logits, state
+    def forward(self, source, target):
+        return 
