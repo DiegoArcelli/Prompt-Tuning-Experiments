@@ -18,14 +18,21 @@ batch_size = 64
 # print(out.shape)
 # print(hidden.shape)
 
+# inp = torch.randint(0, vocab_size, (batch_size,))
+# x = torch.randn(batch_size, 128)
+# y = torch.randn(seq_len, batch_size, 256)
+
+# dec = Decoder(vocab_size, 128, 128, 1)
+
+# logits, hidden = dec(inp, x, y)
+# print(logits.shape)
+# print(hidden.shape)
+
+model = Seq2Seq(5000, 6000, 256, 256, 4, 1, 0.5, device)
+
+x = torch.randint(0, 5000, (seq_len, batch_size))
+y = torch.randint(0, 6000, (seq_len-3, batch_size))
 
 
-inp = torch.randint(0, vocab_size, (batch_size,))
-x = torch.randn(batch_size, 128)
-y = torch.randn(seq_len, batch_size, 256)
-
-dec = Decoder(vocab_size, 128, 128, 1)
-
-logits, hidden = dec(inp, x, y)
-print(logits.shape)
-print(hidden.shape)
+out  = model(x, y)
+print(out.shape)

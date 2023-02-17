@@ -2,6 +2,7 @@ from transformers import BartModel
 import torch
 from torch import nn
 import torch.nn.functional as F
+import random
 
 class BartForNMT(nn.Module):
 
@@ -33,14 +34,15 @@ class Encoder(nn.Module):
     - hidden_dim: size of the embedding
     - n_layers: number of layers of the GRU
     '''
-    def __init__(self, vocab_dim, hidden_dim, n_layers) -> None:
+    def __init__(self, vocab_dim, enc_hidden_dim, dec_hidden_dim, n_layers) -> None:
         super(Encoder, self).__init__()
         self.input_dim = vocab_dim
-        self.hidden_dim = hidden_dim
+        self.enc_hidden_dim = enc_hidden_dim
+        self.dec_hidden_dim = dec_hidden_dim
         self.n_layers = n_layers
-        self.embedder = nn.Embedding(vocab_dim, hidden_dim)
-        self.encoder = nn.GRU(hidden_dim, hidden_dim, n_layers, bidirectional=True)
-        self.linear = nn.Linear(hidden_dim*2, hidden_dim)
+        self.embedder = nn.Embedding(vocab_dim, enc_hidden_dim)
+        self.encoder = nn.GRU(enc_hidden_dim, enc_hidden_dim, n_layers, bidirectional=True)
+        self.linear = nn.Linear(enc_hidden_dim*2, dec_hidden_dim)
 
 
     '''
@@ -50,41 +52,41 @@ class Encoder(nn.Module):
     - x: a tensor of size (length, batch_size) which contains the tokenized sentences
 
     Output:
-    - out: the output of the GRU of size (length, batch_size, hidden_dim)
-    - hidden: the internal state of the last GRU layer of size (length, hidden_dim)
+    - out: the output of the GRU of size (length, batch_size, dec_hidden_dim)
+    - hidden: the internal state of the last GRU layer of size (length, 2*enc_hidden_dim)
     '''
     def forward(self, x):
-
+        
         '''
         Embedder receives as input a tensor (length, batch_size) and returns
-        a tensor of size (length, batch_size, hidden_dim)
+        a tensor of size (length, batch_size, enc_hidden_dim)
         '''
         x = self.embedder(x)
 
         '''
-        The GRU receives as input a tensor of size (length, batch_size, hidden_dim)
+        The GRU receives as input a tensor of size (length, batch_size, enc_hidden_dim)
         and returns two tensors:
-        - The output for each input of size (length, batch_size, 2*hidden_dim)
-        - The hidden state of each layer of size (2*num_layers, length, hidden_dim)
+        - The output for each input of size (length, batch_size, 2*enc_hidden_dim)
+        - The hidden state of each layer of size (2*num_layers, batch_size, enc_hidden_dim)
         '''
         out, hidden = self.encoder(x)
 
         '''
         We concatenate the last hidden sates of the left-to-right and the right-to-left
-        layers of the GRU to get a single hidden state tensor of size (length, 2*hidden_dim)
+        layers of the GRU to get a single hidden state tensor of size (length, 2*enc_hidden_dim)
         '''
         hidden_cat = torch.cat((hidden[-2, : ,:], hidden[-1, :, :]), dim=1)
 
         '''
         We use a linear layer with a tanh activation function to map the last hidden state of
-        size (length, 2*hidden_dim) to a tensor of size (length, hidden_dim)
+        size (length, 2*enc_hidden_dim) to a tensor of size (length, dec_hidden_dim)
         '''
         hidden = torch.tanh(self.linear(hidden_cat))
 
         '''
         We return:
         - The output of the GRU of size (length, batch_size, hidden_dim)
-        - The mapping of the internal hidden state of the GRU of size (length, hidden_dim)
+        - The mapping of the internal hidden state of the GRU of size (length, dec_hidden_dim)
         '''
         return out, hidden
 
@@ -178,6 +180,7 @@ class AttentionLayer(nn.Module):
         (batch_size, 2*enc_hidden_dim)
         '''
         attention = attention.squeeze(1)
+
 
         return attention
 
@@ -287,7 +290,7 @@ class Decoder(nn.Module):
 class Seq2Seq(nn.Module):
 
 
-    def __init__(self, enc_vocab_dim, dec_vocab_dim, enc_hidden_dim, dec_hidden_dim, enc_n_layers, dec_n_layers, n_heads) -> None:
+    def __init__(self, enc_vocab_dim, dec_vocab_dim, enc_hidden_dim, dec_hidden_dim, enc_n_layers, dec_n_layers, teacher_forcing_ratio, device) -> None:
         super(Seq2Seq, self).__init__()
         self.enc_vocab_dim = enc_vocab_dim
         self.dec_vocab_dim = dec_vocab_dim
@@ -295,10 +298,71 @@ class Seq2Seq(nn.Module):
         self.dec_hidden_dim = dec_hidden_dim
         self.enc_n_layers = enc_n_layers
         self.dec_n_layers = dec_n_layers
-        self.n_heads =  n_heads
+        self.teacher_forcing_ratio = teacher_forcing_ratio
+        self.device = device
 
-        self.encoder = Encoder(enc_vocab_dim, enc_hidden_dim, enc_n_layers)
-        self.decoder = Decoder(dec_vocab_dim, dec_hidden_dim, dec_n_layers, n_heads)
+        self.encoder = Encoder(enc_vocab_dim, enc_hidden_dim, dec_hidden_dim, enc_n_layers)
+        self.decoder = Decoder(dec_vocab_dim, enc_hidden_dim, dec_hidden_dim, dec_n_layers)
 
+
+    '''
+    Forward pass of the seq2seq model
+
+    Input:
+    - source: the input sentences, a tensor of size (src_len, batch_size)
+    - target: the target sentences, a tensor of size (dst_len, batch_size)
+
+    Output:
+    - outputs: the logits for each token of each sentence,
+               a tensor of size (dst_len, batch_size, dec_vocab_dim)
+    '''
     def forward(self, source, target):
-        return 
+        
+        # max sequence length of the target sentences
+        target_len = target.shape[0]
+
+        # batch size
+        batch_size = target.shape[1]
+
+        '''
+        The source sentences are processed by the encoder that returns:
+        - enc_output: a tensor of size (length, batch_size, 2*enc_hidden_dim)
+        - hidden: a tensor of size (batch_size, dec_hidden_dim)
+        '''
+        enc_output, hidden = self.encoder(source)
+
+        '''
+        We prepare a tensor of size (dst_len, batch_size, dec_vocab_dim)
+        that will store the output of the model
+        '''
+        outputs = torch.zeros(target_len, batch_size, self.dec_vocab_dim)
+
+        '''
+        We take the first token of each target sentence of the batch,
+        a tensor of size (batch_size)
+        '''
+        target_token = target[0, :]
+
+        # iterate over all the tokens of the target sentences
+        for t in range(1, target_len):
+
+            '''
+            The decoder returns:
+            - logits: the logits for the current target token, size (batch_size, dec_voc_dim)
+            - hidden: the next hidden state of the decoder, size (batch_size, dec_hidden_dim) 
+            '''
+            logits, hidden = self.decoder(target_token, hidden, enc_output)
+
+            outputs[t] = logits
+
+            # decide whether to use teacher forcing or not
+            teacher_force = random.uniform(0, 1) < self.teacher_forcing_ratio
+
+            '''
+            for each sentence we compute the most likely next token
+            '''
+            top1 = logits.argmax(1) 
+
+            target_token = target[t, :] if teacher_force else top1
+
+        return outputs
