@@ -61,6 +61,8 @@ class Trainer:
         self.src_tokenizer = src_tokenizer
         self.dst_tokenizer = dst_tokenizer
         self.config = config
+        self.criterion = nn.CrossEntropyLoss()
+        self.optimizer = optim.Adam(self.model.parameters(), lr=0.1)
 
     
     def set_seeds(self, seed):
@@ -101,35 +103,40 @@ class Trainer:
         seed = self.config["seed"]
         self.set_seeds(seed)
 
-        epochs = self.config["max_epochs"]
         batch_size = self.config["batch_size"]
         # self.model.to(self.device)
 
         train_loader, test_loaded = self.get_data_loader(batch_size, 0.8)
 
+        self.train_loop(train_loader, test_loaded)
 
-        criterion = nn.CrossEntropyLoss()
-        optimizer = optim.Adam(self.model.parameters(), lr=0.1)
 
-        start = time.time()
+    def train_loop(self, train_loader, test_loader):
+
+        epochs = self.config["max_epochs"]
+        batch_size = self.config["batch_size"]
+
         for epoch in range(1, epochs+1):
-
             self.model.train()
-
-            for step, batch in enumerate(train_loader):
-
-                optimizer.zero_grad()
-
-                inputs, targets = batch
-
-                return
-
-                # exit()
-        end = time.time()
-        print(end-start)
+            self.train_step(train_loader)
 
 
+    def train_step(self, train_loader):
 
+        for step, batch in enumerate(train_loader):
+            print(step)
+
+            self.optimizer.zero_grad()
+
+            inputs, targets = batch
+
+    
+    def validation_step(self, val_loader):
+        pass
+
+
+
+####################################################################################
 
 
 class Seq2SeqTrainer(Trainer):
@@ -137,36 +144,22 @@ class Seq2SeqTrainer(Trainer):
     def __init__(self, model, src_tokenizer, dst_tokenizer, config) -> None:
         super(Seq2SeqTrainer, self).__init__(model, src_tokenizer, dst_tokenizer, config)
 
-    def train(self):
 
-        seed = self.config["seed"]
-        self.set_seeds(seed)
-        # self.model.to(self.device)
+    def train_step(self, train_loader):
 
-        epochs = self.config["max_epochs"]
-        batch_size = self.config["batch_size"]
+        for step, batch in enumerate(train_loader):
+            print(step)
 
-        train_loader, test_loaded = self.get_data_loader(batch_size, 0.8)
+            self.optimizer.zero_grad()
 
-        criterion = nn.CrossEntropyLoss()
-        optimizer = optim.Adam(self.model.parameters(), lr=0.1)
+            inputs, targets = batch
 
-        for epoch in range(1, epochs+1):
+            input_ids = inputs.input_ids.permute(1, 0)
+            target_ids = targets.input_ids.permute(1, 0)
 
-            self.model.train()
+            print(input_ids.shape)
+            print(target_ids.shape)
+            output = self.model(input_ids, target_ids)
+            print(output.shape)
 
-            for step, batch in enumerate(train_loader):
-
-                optimizer.zero_grad()
-
-                inputs, targets = batch
-
-                input_ids = inputs.input_ids.permute(1, 0)
-                target_ids = targets.input_ids.permute(1, 0)
-
-                print(input_ids.shape)
-                print(target_ids.shape)
-                output = self.model(input_ids, target_ids)
-                print(output.shape)
-
-                return
+            return
