@@ -74,7 +74,7 @@ class Trainer:
         np.random.seed(seed)
 
 
-    def get_data_loader(self, batch_size, split=0.8):
+    def get_data_loader(self, batch_size, val_split=0.2, test_split=0.1):
 
         data_set = AnkiDataset("./../dataset/ita.txt",
                                self.src_tokenizer,
@@ -84,13 +84,24 @@ class Trainer:
                                )
 
 
-        train_size = int(len(data_set)*split)
-        test_size = len(data_set) - train_size
-        train_set, test_set = random_split(data_set, [train_size, test_size])
+        n = len(data_set)
+
+        train_split = 1 - val_split - test_split
+        val_size = int(n*val_split)
+        test_size = int(n*test_split)
+        train_size = n - val_size - test_size
+
+
+        train_set, val_set, test_set = random_split(data_set, [train_size, val_size, test_size])
 
         train_loader = DataLoader(
                     train_set,
                     batch_size = batch_size
+                )
+        
+        val_loader = DataLoader(
+                    val_set,
+                    batch_size=batch_size
                 )
         
         test_loader = DataLoader(
@@ -98,7 +109,7 @@ class Trainer:
                     batch_size = batch_size
                 )
         
-        return train_loader, test_loader
+        return train_loader, val_loader, test_loader
 
 
 
@@ -111,14 +122,14 @@ class Trainer:
         batch_size = self.config["batch_size"]
         # self.model.to(self.device)
 
-        train_loader, test_loaded = self.get_data_loader(batch_size, 0.8)
+        train_loader, val_loader, test_loader = self.get_data_loader(batch_size, 0.2, 0.2)
 
-        self.train_loop(train_loader, test_loaded)
-
-
+        self.train_loop(train_loader, val_loader)
 
 
-    def train_loop(self, train_loader, test_loader):
+
+
+    def train_loop(self, train_loader, val_loader):
 
         epochs = self.config["max_epochs"]
         batch_size = self.config["batch_size"]
@@ -126,6 +137,7 @@ class Trainer:
         for epoch in range(1, epochs+1):
             self.model.train()
             self.train_step(train_loader)
+            self.val_step(val_loader)
 
 
     def train_step(self, train_loader):
@@ -138,7 +150,7 @@ class Trainer:
             inputs, targets = batch
 
     
-    def validation_step(self, val_loader):
+    def val_step(self, val_loader):
         pass
 
 
@@ -180,12 +192,8 @@ class Seq2SeqTrainer(Trainer):
             output = output[1:].view(-1, output_dim)
             target_ids = target_ids[1:].reshape(-1)
 
-
-
             loss = self.criterion(output, target_ids)
             
-            print(loss)
-
             loss.backward()
 
             self.optimizer.step()
