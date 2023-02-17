@@ -69,14 +69,7 @@ class Trainer:
         np.random.seed(seed)
 
 
-    def train(self):
-        
-        seed = self.config["seed"]
-        self.set_seeds(seed)
-        # self.model.to(self.device)
-
-        epochs = self.config["max_epochs"]
-        batch_size = self.config["batch_size"]
+    def get_data_loader(self, batch_size, split=0.8):
 
         data_set = AnkiDataset("./../dataset/ita.txt",
                                self.src_tokenizer,
@@ -86,7 +79,7 @@ class Trainer:
                                )
 
 
-        train_size = int(len(data_set)*0.8)
+        train_size = int(len(data_set)*split)
         test_size = len(data_set) - train_size
         train_set, test_set = random_split(data_set, [train_size, test_size])
 
@@ -99,6 +92,21 @@ class Trainer:
                     test_set,
                     batch_size = batch_size
                 )
+        
+        return train_loader, test_loader
+
+
+    def train(self):
+        
+        seed = self.config["seed"]
+        self.set_seeds(seed)
+
+        epochs = self.config["max_epochs"]
+        batch_size = self.config["batch_size"]
+        # self.model.to(self.device)
+
+        train_loader, test_loaded = self.get_data_loader(batch_size, 0.8)
+
 
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.Adam(self.model.parameters(), lr=0.1)
@@ -115,21 +123,6 @@ class Trainer:
                 inputs, targets = batch
 
                 return
-
-                # print(inputs.input_ids.shape)
-                # print(targets.input_ids.shape)
-
-                # print(inputs.input_ids.shape)
-                # print(targets.input_ids.shape)
-
-                #outputs = model(input.input_ids)
-                #print(outputs.keys())
-                # logits = outputs.logits
-
-                # print(logits.shape)
-
-                # # print(logits.view(-1, 50265).shape)
-                # # print(targets.view(-1).shape)
 
                 # exit()
         end = time.time()
@@ -153,27 +146,7 @@ class Seq2SeqTrainer(Trainer):
         epochs = self.config["max_epochs"]
         batch_size = self.config["batch_size"]
 
-        data_set = AnkiDataset("./../dataset/ita.txt",
-                               self.src_tokenizer,
-                               self.dst_tokenizer,
-                               self.config["src_max_length"],
-                               self.config["dst_max_length"]
-                               )
-
-
-        train_size = int(len(data_set)*0.8)
-        test_size = len(data_set) - train_size
-        train_set, test_set = random_split(data_set, [train_size, test_size])
-
-        train_loader = DataLoader(
-                    train_set,
-                    batch_size = batch_size
-                )
-        
-        test_loader = DataLoader(
-                    test_set,
-                    batch_size = batch_size
-                )
+        train_loader, test_loaded = self.get_data_loader(batch_size, 0.8)
 
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.Adam(self.model.parameters(), lr=0.1)
