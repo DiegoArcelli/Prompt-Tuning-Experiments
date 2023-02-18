@@ -150,8 +150,13 @@ class Trainer:
 
             output = self.model(
                 input_ids = inputs.input_ids,
-                attention_mask=inputs.mask
+                attention_mask=inputs.attention_mask,
+                
             )
+
+            logits = output.logits
+
+            
 
 
 

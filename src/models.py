@@ -3,33 +3,57 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 import random
+from utils import get_model
 
-class T5ForNMT(nn.Module):
 
-    def __init__(self, hidden_size, voc_size) -> None:
-        super(T5ForNMT, self).__init__()
-        self.bart = T5Model.from_pretrained("t5-small")
+'''
+Class that implements a model for a neueral machine translation task
+'''
+class NMTModel(nn.Module):
+
+    def __init__(self, model, hidden_size, voc_size) -> None:
+        super(NMTModel, self).__init__()
+        self.model = model
         self.head = nn.Linear(hidden_size, voc_size, bias=False)
 
-    def forward(self, inputs):
-        output = self.bart(inputs)
+    
+    def forward(self, inputs, targets=None):
+
+        input_ids = inputs.input_ids
+        attention_mask = inputs.attention_mask
+
+        if targets is not None:
+            target_input_ids = targets.input_ids
+            target_attention_mask = targets.attention_mask
+        else:
+            target_input_ids = inputs.input_ids
+            target_attention_mask = inputs.attention_mask
+
+        output = self.model(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            decoder_input_ids=target_input_ids,
+            decoder_attention_mask=target_attention_mask,
+        )
+
         last_hidden_state = output.last_hidden_state
         output["logits"] = self.head(last_hidden_state)
+
         return output
         
 
-class BartForNMT(nn.Module):
+class T5ForNMT(NMTModel):
 
     def __init__(self, hidden_size, voc_size) -> None:
-        super(BartForNMT, self).__init__()
-        self.bart = BartModel.from_pretrained("facebook/bart-base")
-        self.head = nn.Linear(hidden_size, voc_size, bias=False)
+        super(T5ForNMT, self).__init__(get_model("t5"), hidden_size, voc_size)
+        
 
-    def forward(self, inputs):
-        output = self.bart(inputs)
-        last_hidden_state = output.last_hidden_state
-        output["logits"] = self.head(last_hidden_state)
-        return output
+
+class BartForNMT(NMTModel):
+
+    def __init__(self, hidden_size, voc_size) -> None:
+        super(BartForNMT, self).__init__(get_model("bart"), hidden_size, voc_size)
+
 
 '''
 Implementation of the sequence2sequence model as descriped in the paper:
