@@ -2,7 +2,6 @@ from torch.utils.data import Dataset, RandomSampler
 from transformers import AutoTokenizer
 from torch.utils.data import DataLoader
 from transformers import BartModel
-from models import BartForNMT
 import torch
 from torch import nn
 from torch import optim
@@ -149,9 +148,20 @@ class Trainer:
 
             inputs, targets = batch
 
+            output = self.model(
+                input_ids = inputs.input_ids,
+                attention_mask=inputs.mask
+            )
+
+
+
     
     def val_step(self, val_loader):
         pass
+
+
+
+
 
 
 ####################################################################################

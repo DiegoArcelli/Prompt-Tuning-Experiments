@@ -39,5 +39,5 @@ y = torch.randint(0, 6000, (seq_len-3, batch_size))
 print(x.shape)
 print(y.shape)
 
-out  = model(x, y)
+out = model(x, y)
 print(out.shape)
