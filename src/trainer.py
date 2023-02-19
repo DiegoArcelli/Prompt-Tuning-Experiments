@@ -148,13 +148,13 @@ class Trainer:
 
             inputs, targets = batch
 
-            output = self.model(
-                input_ids = inputs.input_ids,
-                attention_mask=inputs.attention_mask,
-                
-            )
+            output = self.model(inputs, targets)
 
             logits = output.logits
+
+            print(logits.shape)
+
+            exit()
 
             
 
