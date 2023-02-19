@@ -1,5 +1,6 @@
 from trainer import Trainer
-from models import T5ForNMT, BartForNMT
+from models.rnn_models import Seq2Seq
+from models.nmt_models import BartForNMT, T5ForNMT
 from transformers import AutoTokenizer
 
 model = T5ForNMT(512, 32100)

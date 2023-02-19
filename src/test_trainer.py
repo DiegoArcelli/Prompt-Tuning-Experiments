@@ -1,6 +1,7 @@
 from trainer import AutoTokenizer
 from trainer import Trainer, Seq2SeqTrainer
-from models import Seq2Seq, BartForNMT, T5ForNMT
+from models.rnn_models import Seq2Seq
+from models.nmt_models import BartForNMT, T5ForNMT
 import torch
 
 # model = BartModel.from_pretrained('facebook/bart-base')

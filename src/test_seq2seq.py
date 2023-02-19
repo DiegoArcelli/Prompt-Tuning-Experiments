@@ -1,7 +1,8 @@
 import torch
 from torch import nn
 import torch.functional as F
-from models import Decoder, Encoder, Seq2Seq, AttentionLayer
+from models.rnn_models import Seq2Seq, Decoder, Encoder, AttentionLayer
+from models.nmt_models import BartForNMT, T5ForNMT
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
