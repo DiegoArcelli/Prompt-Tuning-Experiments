@@ -3,7 +3,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
-class T5PromptTuning(T5ForConditionalGeneration):
+class T5PromptTuningSuper:
 
     def __init__(self) -> None:
-        super(T5PromptTuning, self).__init__()
+        super(T5PromptTuningSuper, self).__init__()

@@ -1,3 +1,5 @@
+import sys
+sys.path.append("./../")
 from trainer import AutoTokenizer
 from trainer import Trainer, Seq2SeqTrainer
 from models.rnn_models import Seq2Seq
