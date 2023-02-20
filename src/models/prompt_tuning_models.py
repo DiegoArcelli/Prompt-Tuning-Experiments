@@ -31,11 +31,19 @@ class T5PromptTuningUtils:
         for param in model.parameters():
             param.requires_grad = False
 
+        '''
+        load the encoder soft prompts if the path is provided otheriwise they
+        are randomly initialized
+        '''
         if encoder_soft_prompt_path is not None:
             model.set_encoder_soft_prompts(encoder_soft_prompt_path)
         else:
             model.initialize_encoder_soft_prompts(n_tokens, random_range)
 
+        '''
+        load the encoder soft prompts if the path is provided otheriwise they
+        are randomly initialized
+        '''
         if decoder_soft_prompt_path is not None:
             model.set_decoder_soft_prompts(decoder_soft_prompt_path)
         else:
@@ -68,11 +76,25 @@ class T5PromptTuningUtils:
         self.n_tokens = self.decoder_soft_prompt.num_embeddings
 
 
-    def concatenate_soft_prompts(self, input_ids):
+    def concatenate_encoder_soft_prompts(self, input_ids):
         embeddings = self.encoder.embed_tokens(input_ids.to(self.device))
         soft_prompts = self.encoder_soft_prompt.weight.repeat(embeddings.size(0), 1, 1)
         inputs_concat = torch.cat([soft_prompts, embeddings], dim=1)
         return inputs_concat
+    
+
+    def concatenate_decoder_soft_prompts(self, input_ids):
+        embeddings = self.decoder.embed_tokens(input_ids.to(self.device))
+        soft_prompts = self.decoder_soft_prompt.weight.repeat(embeddings.size(0), 1, 1)
+        inputs_concat = torch.cat([soft_prompts, embeddings], dim=1)
+        return inputs_concat
+
+
+    def extend_attention_mask(self, attention_mask):
+        batch_size = attention_mask.shape[0]
+        soft_prompts_mask = torch.full((batch_size, self.n_tokens), 1, dtype=torch.long).to(self.device)
+        extended_mask = torch.concat([soft_prompts_mask, attention_mask], dim=1)
+        return attention_mask.to(self.device)
 
 
 
@@ -93,7 +115,18 @@ class T5PromptTuningUtils:
         **kwargs
     ):
         
-        input_embeddings = self.concatenate_soft_prompts(input_ids)
+        if input_ids is not None:
+            inputs_embeds = self.concatenate_encoder_soft_prompts(input_ids)
+            input_ids = None
+
+        if decoder_input_ids is not None:
+            decoder_input_ids = self.extend_attention_mask(decoder_input_ids)
+
+        if attention_mask is not None:
+            attention_mask = self.extend_attention_mask(attention_mask)
+
+        if decoder_attention_mask is not None:
+            decoder_attention_mask = self.extend_attention_mask(attention_mask)
 
 
         return super().forward(
@@ -111,7 +144,6 @@ class T5PromptTuningUtils:
             *args,
             **kwargs
         )
-
 
 
 '''
