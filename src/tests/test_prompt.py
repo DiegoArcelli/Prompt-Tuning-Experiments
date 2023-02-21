@@ -10,6 +10,8 @@ model = T5PromptTuning.from_pretrained(
     decoder_soft_prompt_path = None,
     encoder_n_tokens = 20,
     decoder_n_tokens = 20,
+    encoder_hidden_dim=64,
+    decoder_hidden_dim=64
 )
 tokenizer = T5Tokenizer.from_pretrained("t5-small")
 

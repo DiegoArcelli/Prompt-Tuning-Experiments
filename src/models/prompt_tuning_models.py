@@ -20,6 +20,8 @@ class T5PromptTuningUtils:
         decoder_soft_prompt_path = None,
         encoder_n_tokens = None,
         decoder_n_tokens = None,
+        encoder_hidden_dim = None,
+        decoder_hidden_dim = None,
         initialize_from_vocab = True,
         random_range = 0.5,
         device=None,
@@ -40,7 +42,7 @@ class T5PromptTuningUtils:
         if encoder_soft_prompt_path is not None:
             model.set_encoder_soft_prompts(encoder_soft_prompt_path)
         else:
-            model.initialize_encoder_soft_prompts(encoder_n_tokens, random_range)
+            model.initialize_encoder_soft_prompts(encoder_n_tokens, encoder_hidden_dim, random_range)
 
         '''
         load the encoder soft prompts if the path is provided otheriwise they
@@ -49,17 +51,41 @@ class T5PromptTuningUtils:
         if decoder_soft_prompt_path is not None:
             model.set_decoder_soft_prompts(decoder_soft_prompt_path)
         else:
-            model.initialize_decoder_soft_prompts(decoder_n_tokens, random_range)
+            model.initialize_decoder_soft_prompts(decoder_n_tokens, decoder_hidden_dim, random_range)
 
         model.encoder_n_tokens = encoder_n_tokens
         model.decoder_n_tokens = decoder_n_tokens
 
+        enc_emb_size = model.encoder.get_input_embeddings().weight.shape[1]
+        dec_emb_size = model.decoder.get_input_embeddings().weight.shape[1]
+
+        encoder_emb_generator = nn.Sequential(
+            nn.Linear(encoder_hidden_dim, encoder_hidden_dim),
+            nn.ReLU(),
+            nn.Linear(encoder_hidden_dim, enc_emb_size),
+            nn.Tanh()
+        )
+
+        model.encoder_emb_generator = encoder_emb_generator
+
+        decoder_emb_generator = nn.Sequential(
+            nn.Linear(decoder_hidden_dim, decoder_hidden_dim),
+            nn.ReLU(),
+            nn.Linear(decoder_hidden_dim, dec_emb_size),
+            nn.Tanh()
+        ) 
+
+        model.decoder_emb_generator = decoder_emb_generator
+
+        model.encoder_input_tokens = torch.arange(encoder_n_tokens).long()
+        model.decoder_input_tokens = torch.arange(decoder_n_tokens).long()
+
         return model
     
 
-    def initialize_encoder_soft_prompts(self, n_tokens, random_range=0.5):
+    def initialize_encoder_soft_prompts(self, n_tokens, hidden_dim, random_range=0.5):
         self.n_tokens = n_tokens
-        self.encoder_soft_prompt = nn.Embedding(n_tokens, self.config.d_model)
+        self.encoder_soft_prompt = nn.Embedding(n_tokens, hidden_dim)
         # init_prompt_value = torch.FloatTensor(2, 10).uniform_(-random_range, random_range)
         # self.encoder_soft_prompt.weight = nn.parameter.Parameter(init_prompt_value)
 
@@ -69,9 +95,9 @@ class T5PromptTuningUtils:
         self.n_tokens = self.encoder_soft_prompt.num_embeddings
 
 
-    def initialize_decoder_soft_prompts(self, n_tokens, random_range=0.5):
+    def initialize_decoder_soft_prompts(self, n_tokens, hidden_dim, random_range=0.5):
         self.n_tokens = n_tokens
-        self.decoder_soft_prompt = nn.Embedding(n_tokens, self.config.d_model)
+        self.decoder_soft_prompt = nn.Embedding(n_tokens, hidden_dim)
         # init_prompt_value = torch.FloatTensor(2, 10).uniform_(-random_range, random_range)
         # self.decoder_soft_prompt.weight = nn.parameter.Parameter(init_prompt_value)
 
@@ -82,26 +108,36 @@ class T5PromptTuningUtils:
 
 
     def concatenate_encoder_soft_prompts(self, input_ids):
-        embeddings = self.encoder.embed_tokens(input_ids.to(self.device))
-        soft_prompts = self.encoder_soft_prompt.weight.repeat(embeddings.size(0), 1, 1)
+        inputs_emb = self.encoder_soft_prompt(self.encoder_input_tokens)
+        soft_prompts = self.encoder_emb_generator(inputs_emb)
+
+        embeddings = self.encoder.embed_tokens(input_ids)
+
+        soft_prompts = soft_prompts.repeat(embeddings.size(0), 1, 1)
+
         inputs_concat = torch.cat([soft_prompts, embeddings], dim=1)
         return inputs_concat
     
 
     def concatenate_decoder_soft_prompts(self, input_ids):
-        embeddings = self.decoder.embed_tokens(input_ids.to(self.device))
-        soft_prompts = self.decoder_soft_prompt.weight.repeat(embeddings.size(0), 1, 1)
+        inputs_emb = self.decoder_soft_prompt(self.decoder_input_tokens)
+        soft_prompts = self.decoder_emb_generator(inputs_emb)
+        
+        embeddings = self.decoder.embed_tokens(input_ids)
+
+        soft_prompts = soft_prompts.repeat(embeddings.size(0), 1, 1)
+
         inputs_concat = torch.cat([soft_prompts, embeddings], dim=1)
         return inputs_concat
 
 
     def extend_attention_mask(self, attention_mask):
         batch_size = attention_mask.shape[0]
-        soft_prompts_mask = torch.full((batch_size, self.n_tokens), 1, dtype=torch.long).to(self.device)
+        soft_prompts_mask = torch.full((batch_size, self.n_tokens), 1, dtype=torch.long)
         extended_mask = torch.concat([soft_prompts_mask, attention_mask], dim=1)
         return extended_mask
     
-    
+
     def extend_labels(self, labels, ignore_index=-100):
         batch_size = labels.shape[0]
         soft_prompts_indices = torch.full((batch_size, self.decoder_n_tokens), ignore_index)
@@ -119,8 +155,8 @@ class T5PromptTuningUtils:
     - decoder_attention_mask: the attention mask of the decoder (batch_size, dst_len)
 
     Output:
-    - 
-    - 
+    - logits: 
+    - encoder_last_hidden_state: 
     '''
     def forward(
         self,
@@ -138,7 +174,6 @@ class T5PromptTuningUtils:
         *args,
         **kwargs
     ):
-        
         
         if input_ids is not None:
             '''
@@ -179,7 +214,9 @@ class T5PromptTuningUtils:
             '''
             labels = self.extend_labels(labels)
             
-
+        '''
+        we pass the encoder and decoder embeddings to the forward layer of T5
+        '''
         return super().forward(
             input_ids=input_ids,
             attention_mask=attention_mask,

@@ -4,8 +4,8 @@ from transformers import AutoTokenizer
 # tokenizer = AutoTokenizer.from_pretrained('t5-small')
 # model = T5ForConditionalGeneration.from_pretrained('t5-small')
 
-tokenizer = AutoTokenizer.from_pretrained("google/t5-v1_1-small")
-model = T5ForConditionalGeneration.from_pretrained("google/t5-v1_1-small")
+tokenizer = AutoTokenizer.from_pretrained("t5-small")
+model = T5ForConditionalGeneration.from_pretrained("t5-small")
 
 source = "I love my dog"
 inputs = tokenizer(source, return_tensors='pt')
@@ -28,3 +28,5 @@ print(logits.shape)
 # print(tokenizer.convert_ids_to_tokens(out[0]))
 
 # out = model(inputs.input_ids)
+print(model.encoder.get_input_embeddings().weight.shape[1])
+print(model.decoder.get_input_embeddings().weight.shape[1])
