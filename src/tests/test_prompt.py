@@ -27,6 +27,7 @@ out = model(
     input_ids = inputs.input_ids,
     attention_mask=inputs.attention_mask,
     decoder_input_ids=targets.input_ids,
-    decoder_attention_mask=targets.attention_mask
+    decoder_attention_mask=targets.attention_mask,
+    labels=targets.input_ids
 )
 print(out.keys())

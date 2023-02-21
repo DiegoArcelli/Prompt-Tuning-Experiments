@@ -10,7 +10,7 @@ super class that defines the behavior of the T5 model with the soft-prompts
 class T5PromptTuningUtils:
 
     '''
-    Wrapper of the from_pretrained class methods to include the loading of the soft-prompts
+    wrapper of the from_pretrained class method to include the loading of the soft-prompts
     '''
     @classmethod
     def from_pretrained(
@@ -100,9 +100,28 @@ class T5PromptTuningUtils:
         soft_prompts_mask = torch.full((batch_size, self.n_tokens), 1, dtype=torch.long).to(self.device)
         extended_mask = torch.concat([soft_prompts_mask, attention_mask], dim=1)
         return extended_mask
+    
+    
+    def extend_labels(self, labels, ignore_index=-100):
+        batch_size = labels.shape[0]
+        soft_prompts_indices = torch.full((batch_size, self.decoder_n_tokens), ignore_index)
+        extended_labels = torch.concat([soft_prompts_indices, labels], dim=1)
+        return extended_labels
 
 
+    '''
+    forward pass of the T5 prompt tuning model
 
+    Input (only the relevants):
+    - input_ids: the inputs tokens of the encoder (batch_size, src_len)
+    - attention_mask: the attention mask of the encoder (batch_size, src_len)
+    - decoder_input_ids: the inputs tokens of the decoder (batch_size, dst_len)
+    - decoder_attention_mask: the attention mask of the decoder (batch_size, dst_len)
+
+    Output:
+    - 
+    - 
+    '''
     def forward(
         self,
         input_ids=None,
@@ -119,20 +138,47 @@ class T5PromptTuningUtils:
         *args,
         **kwargs
     ):
-                
+        
+        
         if input_ids is not None:
+            '''
+            if input_ids are passed their embedding is concatenated to the
+            encoder soft prompts to generate input_embeds, a tensor
+            of size (batch_size, enc_n_tokens + seq_len, enc_hidden_dim)
+            '''
             inputs_embeds = self.concatenate_encoder_soft_prompts(input_ids)
             input_ids = None
 
         if decoder_input_ids is not None:
+            '''
+            if decoder_input_ids are passed thier embedding is concatenated to the
+            decoder soft prompts to generate decoder_input_embeds, a tensor
+            of size (batch_size, dec_n_tokens + dst_len, dec_hidden_dim)
+            '''
             decoder_inputs_embeds = self.concatenate_decoder_soft_prompts(decoder_input_ids)
             decoder_input_ids = None
 
         if attention_mask is not None:
+            '''
+            if attention_mask is passed it is extended to include also the encoder
+            soft prompts, generating a tensor of size (batch_size, enc_n_tokens + seq_len)
+            '''
             attention_mask = self.extend_attention_mask(attention_mask)
 
         if decoder_attention_mask is not None:
+            '''
+            if decoder_attention_mask is passed it is extended to include also the decoder
+            soft prompts, generating a tensor of size (batch_size, dec_n_tokens + dst_len)
+            '''
             decoder_attention_mask = self.extend_attention_mask(decoder_attention_mask)
+
+
+        if labels is not None:
+            '''
+            if labels is passed then it is extended to include the also the embeddings
+            '''
+            labels = self.extend_labels(labels)
+            
 
         return super().forward(
             input_ids=input_ids,

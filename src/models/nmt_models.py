@@ -103,5 +103,3 @@ class BartForNMT(NMTModel):
 
     def __init__(self, hidden_size, voc_size) -> None:
         super(BartForNMT, self).__init__(get_model("bart"), hidden_size, voc_size)
-
-
