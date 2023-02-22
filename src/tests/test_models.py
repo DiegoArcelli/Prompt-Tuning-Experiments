@@ -1,6 +1,5 @@
 import sys
 sys.path.append("./../")
-from trainer import Trainer
 from models.rnn_models import Seq2Seq
 from models.nmt_models import BartForNMT, T5ForNMT
 from transformers import AutoTokenizer

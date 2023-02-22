@@ -1,6 +1,6 @@
 from models.rnn_models import Seq2Seq
 from models.nmt_models import BartForNMT, T5ForNMT
-from trainer import Seq2SeqTrainer
+from trainers.seq2seq_trainer import Seq2SeqTrainer
 from transformers import AutoTokenizer
 import torch
 
