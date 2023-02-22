@@ -21,6 +21,7 @@ def get_model(model_name):
 
 
 def plot_curves(curve_1, label_1, curve_2=None, label_2=None, fig_name="figure", show=False):
+
     plt.plot(curve_1, label = label_1)
     if curve_2 is not None:
         plt.plot(curve_2, label = label_2)
@@ -29,5 +30,7 @@ def plot_curves(curve_1, label_1, curve_2=None, label_2=None, fig_name="figure",
 
     if show:
         plt.show()
+
+    plt.clf()
 
     

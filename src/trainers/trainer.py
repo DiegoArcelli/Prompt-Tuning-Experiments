@@ -10,6 +10,8 @@ from torch.utils.data import random_split
 import random
 import numpy as np
 from nmt_datasets import AnkiDataset
+from utils import plot_curves
+import os
 
 
 class Trainer:
@@ -89,7 +91,8 @@ class Trainer:
         train_loader, val_loader, test_loader = self.get_data_loader(batch_size, 0.2, 0.1)
 
         self.train_loop(train_loader, val_loader)
-        self.test_model(train_loader, val_loader, test_loader)
+        self.model.eval()
+        self.test_step(train_loader, val_loader, test_loader)
 
 
 
@@ -112,24 +115,66 @@ class Trainer:
             val_loss = self.val_step(val_loader)
 
             if val_loss < best_val_loss:
+                if best_loss_epoch != None:
+                    os.system(f"rm ./checkpoints/model_{self.model_name}_{best_loss_epoch}_checkpoint.pt")
                 best_val_loss = val_loss
                 best_loss_epoch = epoch
-                torch.save(self.model.state_dict(), f"./../checkpoints/model_{self.model_name}_{epoch}_checkpoint.pt")
+                torch.save(self.model.state_dict(), f"./checkpoints/model_{self.model_name}_{epoch}_checkpoint.pt")
 
             train_losses.append(train_loss)
             val_losses.append(val_loss)
 
+            print(f"Epoch {epoch} train loss: {train_loss}, val_loss: {val_loss}")
+
+        self.best_epoch = best_loss_epoch
+
+        plot_curves(
+            curve_1=train_losses,
+            curve_2=val_losses,
+            label_1="Train loss",
+            label_2="Validation loss",
+            fig_name=f"./images/loss_model_{self.model_name}"
+        )
+
+        plot_curves(
+            curve_1=train_losses[:best_loss_epoch],
+            curve_2=val_losses[:best_loss_epoch],
+            label_1="Train loss",
+            label_2="Validation loss",
+            fig_name=f"./images/best_loss_model_{self.model_name}"
+        )
+
+        plot_curves(
+            curve_1=train_losses,
+            label_1="Train loss",
+            fig_name=f"./images/train_loss_model_{self.model_name}"
+        )
+
+        plot_curves(
+            curve_1=train_losses[:best_loss_epoch],
+            label_1="Train loss",
+            fig_name=f"./images/best_train_loss_model_{self.model_name}"
+        )
+
+
+        plot_curves(
+            curve_1=val_losses,
+            label_1="Val loss",
+            fig_name=f"./images/val_loss_model_{self.model_name}_{epoch}"
+        )
+
+        plot_curves(
+            curve_1=val_losses[:best_loss_epoch],
+            label_1="Val loss",
+            fig_name=f"./images/best_val_loss_model_{self.model_name}_{epoch}"
+        )
         
-
-
-    def test_model(self, train_loader, val_loader, test_loader):
-        pass
+        
 
 
     def train_step(self, train_loader):
 
         for step, batch in enumerate(train_loader):
-            print(step)
 
             self.optimizer.zero_grad()
 
@@ -141,10 +186,25 @@ class Trainer:
 
     
     def val_step(self, val_loader):
+
         for step, batch in enumerate(val_loader):
 
             inputs, targets = batch
 
+            output = self.model(inputs, targets)
+
+            logits = output.logits
+
+
+    
+    def test_step(self, train_loader, val_loader, test_loader):
+
+        self.model.load_state_dict(torch.load(f"./checkpoints/model_{self.model_name}_{self.best_epoch}_checkpoint.pt"))
+        
+        for step, batch in enumerate(train_loader):
+
+            inputs, targets = batch
+            
             output = self.model(inputs, targets)
 
             logits = output.logits

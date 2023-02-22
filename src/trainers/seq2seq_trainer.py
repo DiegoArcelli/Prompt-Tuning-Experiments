@@ -1,3 +1,5 @@
+from sys import path
+path.append("./trainers")
 from torch.utils.data import Dataset, RandomSampler
 from transformers import AutoTokenizer
 from torch.utils.data import DataLoader
@@ -10,6 +12,7 @@ import random
 import numpy as np
 import time
 from trainer import Trainer
+
 
 
 class Seq2SeqTrainer(Trainer):
@@ -55,6 +58,8 @@ class Seq2SeqTrainer(Trainer):
 
             total_loss += loss.item()
 
+            break
+
 
         avg_loss = total_loss / len(train_loader)
 
@@ -92,7 +97,13 @@ class Seq2SeqTrainer(Trainer):
 
             total_loss += loss.item()
 
+            break
+
 
         avg_loss = total_loss / len(val_loader)
 
         return avg_loss
+    
+
+    def test_step(self, train_loader, val_loader, test_loader):
+        return

@@ -11,9 +11,9 @@ config = {
     "dst_max_length": 208,
     "src_vocab_size": 31102,
     "dst_vocab_size": 28996,
-    "enc_hidden_dim": 16,
-    "dec_hidden_dim": 16,
-    "max_epochs": 10,
+    "enc_hidden_dim": 8,
+    "dec_hidden_dim": 8,
+    "max_epochs": 5,
     "batch_size": 8,
     "seed": 7
 }
