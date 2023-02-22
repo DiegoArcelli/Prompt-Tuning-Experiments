@@ -9,7 +9,6 @@ from torch import optim
 from torch.utils.data import random_split
 import random
 import numpy as np
-import time
 from nmt_datasets import AnkiDataset
 
 
@@ -26,6 +25,12 @@ class Trainer:
         pad_token_idx = dst_tokenizer.convert_tokens_to_ids([pad_token])[0]
         self.criterion = nn.CrossEntropyLoss(ignore_index=pad_token_idx)
         self.optimizer = optim.Adam(self.model.parameters(), lr=0.1)
+
+        if "model_name" in config:
+            self.model_name = config["model_name"]
+        else:
+            self.model_name = self.model.__class__.__name__.lower()
+
 
     
     def set_seeds(self, seed):
@@ -98,6 +103,7 @@ class Trainer:
         val_losses = []
 
         best_val_loss = float("inf")
+        best_loss_epoch = None
 
         for epoch in range(1, epochs+1):
             self.model.train()
@@ -107,10 +113,14 @@ class Trainer:
 
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
-
+                best_loss_epoch = epoch
+                torch.save(self.model.state_dict(), f"./../checkpoints/model_{self.model_name}_{epoch}_checkpoint.pt")
 
             train_losses.append(train_loss)
             val_losses.append(val_loss)
+
+        
+
 
     def test_model(self, train_loader, val_loader, test_loader):
         pass

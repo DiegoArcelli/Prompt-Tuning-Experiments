@@ -12,6 +12,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 config = {
+    "model_name": "bart_nmt",
     "src_max_length": 183,
     "dst_max_length": 208,
     "src_vocab_size": 31102,
