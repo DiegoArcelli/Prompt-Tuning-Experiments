@@ -12,7 +12,7 @@ import numpy as np
 from nmt_datasets import AnkiDataset
 from utils import plot_curves
 import os
-
+from trainer_constants import *
 
 class Trainer:
 
@@ -42,8 +42,7 @@ class Trainer:
 
 
     def get_data_loader(self, batch_size, val_split=0.2, test_split=0.1):
-
-        data_set = AnkiDataset("./../dataset/ita.txt",
+        data_set = AnkiDataset(f"{DATASET_PATH}/ita.txt",
                                self.src_tokenizer,
                                self.dst_tokenizer,
                                self.config["src_max_length"],
@@ -78,6 +77,48 @@ class Trainer:
         return train_loader, val_loader, test_loader
 
 
+    def generate_learning_curvers(self, train_losses, val_losses):
+
+        plot_curves(
+            curve_1=train_losses,
+            curve_2=val_losses,
+            label_1="Train loss",
+            label_2="Validation loss",
+            fig_name=f"{IMAGE_PATH}/loss_model_{self.model_name}"
+        )
+
+        plot_curves(
+            curve_1=train_losses[:self.best_epoch],
+            curve_2=val_losses[:self.best_epoch],
+            label_1="Train loss",
+            label_2="Validation loss",
+            fig_name=f"{IMAGE_PATH}/best_loss_model_{self.model_name}"
+        )
+
+        plot_curves(
+            curve_1=train_losses,
+            label_1="Train loss",
+            fig_name=f"{IMAGE_PATH}/train_loss_model_{self.model_name}"
+        )
+
+        plot_curves(
+            curve_1=train_losses[:self.best_epoch],
+            label_1="Train loss",
+            fig_name=f"{IMAGE_PATH}/best_train_loss_model_{self.model_name}"
+        )
+
+
+        plot_curves(
+            curve_1=val_losses,
+            label_1="Val loss",
+            fig_name=f"{IMAGE_PATH}/val_loss_model_{self.model_name}"
+        )
+
+        plot_curves(
+            curve_1=val_losses[:self.best_epoch],
+            label_1="Val loss",
+            fig_name=f"{IMAGE_PATH}/best_val_loss_model_{self.model_name}"
+        )
 
 
     def train(self):
@@ -116,10 +157,10 @@ class Trainer:
 
             if val_loss < best_val_loss:
                 if best_loss_epoch != None:
-                    os.system(f"rm ./checkpoints/model_{self.model_name}_{best_loss_epoch}_checkpoint.pt")
+                    os.system(f"rm {CHECKPOINT_DIR}/model_{self.model_name}_{best_loss_epoch}_checkpoint.pt")
                 best_val_loss = val_loss
                 best_loss_epoch = epoch
-                torch.save(self.model.state_dict(), f"./checkpoints/model_{self.model_name}_{epoch}_checkpoint.pt")
+                torch.save(self.model.state_dict(), f"{CHECKPOINT_DIR}/model_{self.model_name}_{epoch}_checkpoint.pt")
 
             train_losses.append(train_loss)
             val_losses.append(val_loss)
@@ -128,47 +169,7 @@ class Trainer:
 
         self.best_epoch = best_loss_epoch
 
-        plot_curves(
-            curve_1=train_losses,
-            curve_2=val_losses,
-            label_1="Train loss",
-            label_2="Validation loss",
-            fig_name=f"./images/loss_model_{self.model_name}"
-        )
-
-        plot_curves(
-            curve_1=train_losses[:best_loss_epoch],
-            curve_2=val_losses[:best_loss_epoch],
-            label_1="Train loss",
-            label_2="Validation loss",
-            fig_name=f"./images/best_loss_model_{self.model_name}"
-        )
-
-        plot_curves(
-            curve_1=train_losses,
-            label_1="Train loss",
-            fig_name=f"./images/train_loss_model_{self.model_name}"
-        )
-
-        plot_curves(
-            curve_1=train_losses[:best_loss_epoch],
-            label_1="Train loss",
-            fig_name=f"./images/best_train_loss_model_{self.model_name}"
-        )
-
-
-        plot_curves(
-            curve_1=val_losses,
-            label_1="Val loss",
-            fig_name=f"./images/val_loss_model_{self.model_name}_{epoch}"
-        )
-
-        plot_curves(
-            curve_1=val_losses[:best_loss_epoch],
-            label_1="Val loss",
-            fig_name=f"./images/best_val_loss_model_{self.model_name}_{epoch}"
-        )
-        
+        self.generate_learning_curvers(train_losses, val_losses)
         
 
 
@@ -199,7 +200,7 @@ class Trainer:
     
     def test_step(self, train_loader, val_loader, test_loader):
 
-        self.model.load_state_dict(torch.load(f"./checkpoints/model_{self.model_name}_{self.best_epoch}_checkpoint.pt"))
+        self.model.load_state_dict(torch.load(f"{CHECKPOINT_DIR}/model_{self.model_name}_{self.best_epoch}_checkpoint.pt"))
         
         for step, batch in enumerate(train_loader):
 

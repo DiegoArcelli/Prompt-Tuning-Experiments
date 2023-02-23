@@ -13,7 +13,7 @@ config = {
     "dst_vocab_size": 28996,
     "enc_hidden_dim": 8,
     "dec_hidden_dim": 8,
-    "max_epochs": 5,
+    "max_epochs": 3,
     "batch_size": 8,
     "seed": 7
 }
