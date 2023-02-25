@@ -13,6 +13,8 @@ from nmt_datasets import AnkiDataset
 from utils import plot_curves
 import os
 from trainer_constants import *
+import evaluate
+
 
 class Trainer:
 
@@ -42,12 +44,14 @@ class Trainer:
 
 
     def get_data_loader(self, batch_size, val_split=0.2, test_split=0.1):
-        data_set = AnkiDataset(f"{DATASET_PATH}/ita.txt",
-                               self.src_tokenizer,
-                               self.dst_tokenizer,
-                               self.config["src_max_length"],
-                               self.config["dst_max_length"]
-                               )
+        
+        data_set = AnkiDataset(
+            f"{DATASET_PATH}/ita.txt",
+            self.src_tokenizer,
+            self.dst_tokenizer,
+            self.config["src_max_length"],
+            self.config["dst_max_length"]
+        )
 
 
         n = len(data_set)
@@ -106,7 +110,6 @@ class Trainer:
             label_1="Train loss",
             fig_name=f"{IMAGE_PATH}/best_train_loss_model_{self.model_name}"
         )
-
 
         plot_curves(
             curve_1=val_losses,
@@ -176,24 +179,17 @@ class Trainer:
     def train_step(self, train_loader):
 
         for step, batch in enumerate(train_loader):
-
             self.optimizer.zero_grad()
-
             inputs, targets = batch
-
             output = self.model(inputs, targets)
-
             logits = output.logits
 
     
     def val_step(self, val_loader):
 
         for step, batch in enumerate(val_loader):
-
             inputs, targets = batch
-
             output = self.model(inputs, targets)
-
             logits = output.logits
 
 
@@ -203,9 +199,6 @@ class Trainer:
         self.model.load_state_dict(torch.load(f"{CHECKPOINT_DIR}/model_{self.model_name}_{self.best_epoch}_checkpoint.pt"))
         
         for step, batch in enumerate(train_loader):
-
             inputs, targets = batch
-            
             output = self.model(inputs, targets)
-
             logits = output.logits

@@ -18,11 +18,16 @@ config = {
     "seed": 7
 }
 
-model = Seq2Seq(config["src_vocab_size"],
-                config["dst_vocab_size"],
-                config["enc_hidden_dim"],
-                config["dec_hidden_dim"],
-                1, 1, 0.5, device)
+model = Seq2Seq(
+    config["src_vocab_size"],
+    config["dst_vocab_size"],
+    config["enc_hidden_dim"],
+    config["dec_hidden_dim"],
+    1,
+    1,
+    0.5,
+    device
+)
 
 src_tokenizer = AutoTokenizer.from_pretrained("dbmdz/bert-base-italian-cased")
 dst_tokenizer = AutoTokenizer.from_pretrained('bert-base-cased')
