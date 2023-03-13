@@ -7,7 +7,7 @@ import torch.nn.functional as F
 '''
 super class that defines the behavior of the T5 model with the soft-prompts
 '''
-class T5PromptTuningUtils:
+class T5PromptTuningMixin:
 
     '''
     wrapper of the from_pretrained class method to include the loading of the soft-prompts
@@ -193,7 +193,7 @@ class T5PromptTuningUtils:
             decoder_inputs_embeds = self.concatenate_decoder_soft_prompts(decoder_input_ids)
             decoder_input_ids = None
 
-        if attention_mask is not None:
+        if attention_mask is not None and inputs_embeds is not None:
             '''
             if attention_mask is passed it is extended to include also the encoder
             soft prompts, generating a tensor of size (batch_size, enc_n_tokens + seq_len)
@@ -234,11 +234,23 @@ class T5PromptTuningUtils:
         )
 
 
+    def generate(self, *args, **kwargs):
+        # This fixes CUDA for some reason
+        #print("device = ", self.device)
+        #print("the shape input embeds = ", kwargs['inputs_embeds'].shape)
+
+        kwargs['inputs_embeds'] = self.concatenate_encoder_soft_prompts(kwargs['input_ids'])
+        kwargs['attention_mask']=self.extend_attention_mask(torch.ones([1,kwargs['inputs_embeds'].shape[1]-self.n_tokens]).long())
+
+        del kwargs['input_ids']
+
+        return super().generate(*args, **kwargs)
+
 '''
 Defining the T5 model with prompt tuning superclassing T5PromptTuningUtils and 
 T5ForConditionalGeneration (which adds the head for producing the logits)
 '''
-class T5PromptTuning(T5PromptTuningUtils, T5ForConditionalGeneration):
+class T5PromptTuning(T5PromptTuningMixin, T5ForConditionalGeneration):
 
     def __init__(self, config) -> None:
         super(T5PromptTuning, self).__init__(config)

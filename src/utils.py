@@ -7,17 +7,17 @@ def count_parameters(model):
     print(f'The model has {n_params} trainable parameters')
 
 
-def get_model(model_name):
+# def get_model(model_name):
 
-    assert model_name in ["bart", "t5"]
+#     assert model_name in ["bart", "t5"]
 
-    match model_name:
-        case "bart":
-            model = BartModel.from_pretrained("facebook/bart-base")
-        case "t5":
-            model = T5Model.from_pretrained("t5-small")
+#     match model_name:
+#         case "bart":
+#             model = BartModel.from_pretrained("facebook/bart-base")
+#         case "t5":
+#             model = T5Model.from_pretrained("t5-small")
 
-    return model
+#     return model
 
 
 def plot_curves(curve_1, label_1, curve_2=None, label_2=None, fig_name="figure", show=False):

@@ -30,6 +30,8 @@ class Trainer:
         self.criterion = nn.CrossEntropyLoss(ignore_index=pad_token_idx)
         self.optimizer = optim.Adam(self.model.parameters(), lr=0.1)
 
+        self.metric = evaluate.load("bleu")
+
         if "model_name" in config:
             self.model_name = config["model_name"]
         else:
@@ -200,5 +202,7 @@ class Trainer:
         
         for step, batch in enumerate(train_loader):
             inputs, targets = batch
-            output = self.model(inputs, targets)
-            logits = output.logits
+            pred_ids = self.model.generate(inputs.input_ids)
+            pred_sentences = self.dst_tokenizer.decode(pred_ids)
+            target_sentences = self.dst_tokenizer.decode(targets.input_ids)
+            
