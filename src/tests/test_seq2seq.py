@@ -4,39 +4,43 @@ import torch
 from torch import nn
 import torch.functional as F
 from models.rnn_models import Seq2Seq, Decoder, Encoder, AttentionLayer
-from models.nmt_models import BartForNMT, T5ForNMT
+from transformers import AutoTokenizer
+from utils import print_attention_mask
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 vocab_size = 5000
-seq_len = 20
+src_len = 15
+dst_len = 10
 batch_size = 64
+src_tokenizer = AutoTokenizer.from_pretrained("dbmdz/bert-base-italian-cased")
+dst_tokenizer = AutoTokenizer.from_pretrained('bert-base-cased')
 
-# x = torch.randint(0, 5000, (20, 64))
-# y = torch.randint(0, 5000, (batch_size, 20))
-# ctx = torch.randn(64, 20, 256)
-
-# enc = Encoder(vocab_size, 256, 4)
-# out, hidden = enc(x)
-# print(out.shape)
-# print(hidden.shape)
-
-# inp = torch.randint(0, vocab_size, (batch_size,))
-# x = torch.randn(batch_size, 128)
-# y = torch.randn(seq_len, batch_size, 256)
-
-# dec = Decoder(vocab_size, 128, 128, 1)
-
-# logits, hidden = dec(inp, x, y)
-# print(logits.shape)
-# print(hidden.shape)
-
-model = Seq2Seq(5000, 6000, 256, 256, 4, 1, 0.5, device)
+dst = ["I love you", "Please don't do it"]
+src = ["Ti amo", "Per favore non lo fare"]
 
 
+x = src_tokenizer(src, max_length=src_len, pad_to_max_length=True, truncation=True, padding="max_length", return_tensors='pt')
+x = x.input_ids.permute(1, 0)
+y = dst_tokenizer(dst, max_length=dst_len, pad_to_max_length=True, truncation=True, padding="max_length", return_tensors='pt')
+y = y.input_ids.permute(1, 0)
 
-x = torch.randint(0, 5000, (seq_len, batch_size))
-y = torch.randint(0, 6000, (seq_len-3, batch_size))
+model = Seq2Seq(
+    enc_vocab_dim=32128,
+    dec_vocab_dim=32128,
+    enc_hidden_dim=4,
+    dec_hidden_dim=4,
+    enc_n_layers=2,
+    dec_n_layers=1,
+    pad_idx=src_tokenizer.pad_token_id,
+    start_idx=dst_tokenizer.sep_token_id,
+    end_idx=dst_tokenizer.mask_token_id,
+    teacher_forcing_ratio=0.5,
+    device=device
+)
+
+# x = torch.randint(0, 5000, (src_len, batch_size))
+# y = torch.randint(0, 6000, (dst_len, batch_size))
 
 
 print(x.shape)
@@ -44,3 +48,15 @@ print(y.shape)
 
 out = model(x, y)
 print(out.shape)
+
+print("\n\n")
+
+prompt = "I like bikes"
+
+emb_prompt = src_tokenizer([prompt], max_length=src_len, pad_to_max_length=True, truncation=True, padding="max_length", return_tensors='pt')
+pred, attention_mask = model.generate(emb_prompt.input_ids.permute(1, 0), 10)
+print(pred)
+
+print(attention_mask.shape)
+
+print_attention_mask(attention_mask)

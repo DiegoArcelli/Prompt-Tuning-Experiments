@@ -103,7 +103,7 @@ class AttentionLayer(nn.Module):
     Output:
     - attention: the attention scores of size (batch_size, length)
     '''
-    def forward(self, dec_hidden, enc_output):
+    def forward(self, dec_hidden, enc_output, mask):
 
         # sequence length of the source
         src_len = enc_output.shape[0]
@@ -140,6 +140,12 @@ class AttentionLayer(nn.Module):
         energy = self.v(energy).squeeze(2)
 
         '''
+
+        '''
+        energy = energy.masked_fill(mask == 0, -1e10)
+    
+
+        '''
         We compute the alphas applying the softmax to the energy scores
         as a tensor of size (batch_size, length). Each alpha[i, :] is 
         a tensor of size (length) which are the attention coefficients
@@ -153,7 +159,6 @@ class AttentionLayer(nn.Module):
         '''
         alpha = alpha.unsqueeze(1)
 
-
         '''
         We compute the attentions scores which are a tensor of size
         (batch_size, 1, 2*enc_hidden_dim)
@@ -166,8 +171,7 @@ class AttentionLayer(nn.Module):
         '''
         attention = attention.squeeze(1)
 
-
-        return attention
+        return attention, alpha.squeeze(1)
 
 
 
@@ -206,7 +210,7 @@ class Decoder(nn.Module):
     - logits: the logits produced by the decoder which is a tensor of size (batch_size, voc_dim)
     - hidden: the next hidden state of the decoder of size (batch_size, dec_hidden_dim) 
     '''
-    def forward(self, input, dec_hidden, enc_output):
+    def forward(self, input, dec_hidden, enc_output, mask):
 
         '''
         We reshape input from (batch_size) to (1, batch_size)
@@ -221,13 +225,13 @@ class Decoder(nn.Module):
         '''
         We compute the attention scores which are a tensor of shape (batch_size, 2*enc_hidden_dim)
         '''
-        attention = self.attention(dec_hidden, enc_output)
+        attention, alpha = self.attention(dec_hidden, enc_output, mask)
         
         '''
         We concatenate the attention tensor with the  embedded tensor to get
         a tensor of size (batch_size, 2*enc_hidden_dim  + dec_hidden_dim)
         '''
-        gru_input = torch.concat((embedded, attention), dim=1)
+        gru_input = torch.cat((embedded, attention), dim=1)
 
         '''
         We reshape gru_input from (batch_size, 2*enc_hidden_dim  + dec_hidden_dim)
@@ -261,21 +265,33 @@ class Decoder(nn.Module):
         We concatenate the attention scores, the output of the GRU and the embedded of the
         input sequence to get a tensor of size (batch_size, 2*enc_hidden_dim  + 2*dec_hidden_dim)
         '''
-        fc_input = torch.concat((output, attention, embedded), dim=1)
+        fc_input = torch.cat((output, attention, embedded), dim=1)
 
         '''
         We compute the logits which is a tensor of size (batch_size, voc_dim)
         '''
         logits = self.fc_out(fc_input)
 
-        return logits, hidden
+        return logits, hidden, alpha
 
 
 
 class Seq2Seq(nn.Module):
 
 
-    def __init__(self, enc_vocab_dim, dec_vocab_dim, enc_hidden_dim, dec_hidden_dim, enc_n_layers, dec_n_layers, teacher_forcing_ratio, device) -> None:
+    def __init__(self,
+                 enc_vocab_dim,
+                 dec_vocab_dim,
+                 enc_hidden_dim,
+                 dec_hidden_dim,
+                 enc_n_layers,
+                 dec_n_layers,
+                 pad_idx,
+                 start_idx,
+                 end_idx,
+                 teacher_forcing_ratio,
+                 device
+                ) -> None:
         super(Seq2Seq, self).__init__()
         self.enc_vocab_dim = enc_vocab_dim
         self.dec_vocab_dim = dec_vocab_dim
@@ -285,9 +301,18 @@ class Seq2Seq(nn.Module):
         self.dec_n_layers = dec_n_layers
         self.teacher_forcing_ratio = teacher_forcing_ratio
         self.device = device
+        self.pad_idx = pad_idx
+        self.start_idx = start_idx
+        self.end_idx = end_idx
 
         self.encoder = Encoder(enc_vocab_dim, enc_hidden_dim, dec_hidden_dim, enc_n_layers)
         self.decoder = Decoder(dec_vocab_dim, enc_hidden_dim, dec_hidden_dim, dec_n_layers)
+
+
+
+    def create_mask(self, source):
+        mask = (source != self.pad_idx).permute(1, 0)
+        return mask
 
 
     '''
@@ -328,15 +353,17 @@ class Seq2Seq(nn.Module):
         '''
         target_token = target[0, :]
 
+        mask = self.create_mask(source)
+        
         # iterate over all the tokens of the target sentences
         for t in range(1, target_len):
-
+            
             '''
             The decoder returns:
             - logits: the logits for the current target token, size (batch_size, dec_voc_dim)
             - hidden: the next hidden state of the decoder, size (batch_size, dec_hidden_dim) 
             '''
-            logits, hidden = self.decoder(target_token, hidden, enc_output)
+            logits, hidden, _ = self.decoder(target_token, hidden, enc_output, mask)
 
             outputs[t] = logits
 
@@ -351,3 +378,38 @@ class Seq2Seq(nn.Module):
             target_token = target[t, :] if teacher_force else top1
 
         return outputs
+    
+
+    '''
+    Greedy text generation
+    '''
+    def generate(self, source, max_len=50):
+
+        self.eval()
+
+        src_len = source.shape[0]
+
+        with torch.no_grad():
+            enc_output, hidden = self.encoder(source)
+
+        mask = self.create_mask(source)
+
+        target_token = torch.LongTensor([self.start_idx])
+
+        predicted = []
+
+        attention_matrix = torch.zeros(max_len, 1, src_len)
+        
+        for i in range(max_len):
+            
+            with torch.no_grad():
+                logits, hidden, attention = self.decoder(target_token, hidden, enc_output, mask)
+
+            pred_token = logits.argmax(1).item()
+            predicted.append(pred_token)
+            attention_matrix[i] = attention
+
+            if pred_token == self.end_idx:
+                break
+
+        return predicted, attention_matrix[:i+1]
