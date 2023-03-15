@@ -1,5 +1,6 @@
 from sys import path
 path.append("./trainers")
+from trainer_constants import *
 from torch.utils.data import Dataset, RandomSampler
 from transformers import AutoTokenizer
 from torch.utils.data import DataLoader
@@ -66,6 +67,7 @@ class Seq2SeqTrainer(Trainer):
         return avg_loss
     
 
+
     def val_step(self, val_loader):
         
         total_loss = 0
@@ -105,5 +107,41 @@ class Seq2SeqTrainer(Trainer):
         return avg_loss
     
 
-    def test_step(self, train_loader, val_loader, test_loader):
-        return
+
+    def test_step(self, test_loader):
+        
+        total_loss = 0
+
+        for step, batch in enumerate(test_loader):
+
+            self.optimizer.zero_grad()
+
+            inputs, targets = batch
+
+            '''
+            reshape input tensors from (batch_size, length) to (length, batch_size)
+            '''
+            input_ids = inputs.input_ids.permute(1, 0)
+            target_ids = targets.input_ids.permute(1, 0)
+
+            output = self.model(input_ids, target_ids)
+
+            output_dim = output.shape[-1]
+
+            output = output[1:].view(-1, output_dim)
+            target_ids = target_ids[1:].reshape(-1)
+
+            loss = self.criterion(output, target_ids)
+            
+            loss.backward()
+
+            self.optimizer.step()
+
+            total_loss += loss.item()
+
+            break
+
+
+        avg_loss = total_loss / len(test_loader)
+
+        return avg_loss

@@ -126,7 +126,7 @@ class Trainer:
         )
 
 
-    def train(self):
+    def train(self, generate_fun):
         
         seed = self.config["seed"]
         self.set_seeds(seed)
@@ -138,7 +138,17 @@ class Trainer:
 
         self.train_loop(train_loader, val_loader)
         self.model.eval()
-        self.test_step(train_loader, val_loader, test_loader)
+        self.test_step(test_loader)
+
+        # evaluate bleu score
+        train_score = self.metric_evaluation(train_loader, generate_fun)
+        val_score = self.metric_evaluation(val_loader, generate_fun)
+        test_score = self.metric_evaluation(test_loader, generate_fun)
+
+        print(f"Average train set BLEU score: {train_score}")
+        print(f"Average validation set BLEU score: {val_score}")
+        print(f"Average test set BLEU score: {test_score}")
+        
 
 
 
@@ -196,13 +206,52 @@ class Trainer:
 
 
     
-    def test_step(self, train_loader, val_loader, test_loader):
+    def test_step(self, test_loader):
 
         self.model.load_state_dict(torch.load(f"{CHECKPOINT_DIR}/model_{self.model_name}_{self.best_epoch}_checkpoint.pt"))
         
-        for step, batch in enumerate(train_loader):
+        for step, batch in enumerate(test_loader):
             inputs, targets = batch
             pred_ids = self.model.generate(inputs.input_ids)
             pred_sentences = self.dst_tokenizer.decode(pred_ids)
             target_sentences = self.dst_tokenizer.decode(targets.input_ids)
             
+
+    
+
+    def metric_evaluation(self, data_loader, generate_fun):
+        
+        self.model.load_state_dict(torch.load(f"{CHECKPOINT_DIR}/model_{self.model_name}_{self.best_epoch}_checkpoint.pt"))
+        self.model.eval()
+
+
+        score = 0
+
+        for step, batch in enumerate(data_loader):
+
+            self.optimizer.zero_grad()
+
+            inputs, targets = batch
+
+            for i in range(len(inputs)):
+
+                input_ids = inputs[i].input_ids.permute(1, 0)
+                target_ids = targets[i].input_ids
+
+                pred_ids, attention = generate_fun(input_ids)
+
+                # source_tokens = self.src_tokenizer.convert_ids_to_tokens(pred_ids)
+                # target_tokens = self.dst_tokenizer.convert_ids_to_tokens(target_ids)
+
+                pred_sentence = self.src_tokenizer.decode(pred_ids, skip_special_tokens=True)
+                target_sentence = self.dst_tokenizer.decode(target_ids, skip_special_tokens=True)
+
+                result = self.metric.compute(predictions=[pred_sentence], references=[target_sentence])
+                score += result["bleu"]
+
+            score /= len(data_loader)
+
+            return score
+
+
+                

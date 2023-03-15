@@ -6,6 +6,9 @@ import torch.functional as F
 from models.rnn_models import Seq2Seq, Decoder, Encoder, AttentionLayer
 from transformers import AutoTokenizer
 from utils import plot_attention_mask
+import evaluate
+
+bleu = evaluate.load("bleu")
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -39,9 +42,6 @@ model = Seq2Seq(
     device=device
 )
 
-# x = torch.randint(0, 5000, (src_len, batch_size))
-# y = torch.randint(0, 6000, (dst_len, batch_size))
-
 
 print(x.shape)
 print(y.shape)
@@ -59,3 +59,12 @@ source_tokens = src_tokenizer.convert_ids_to_tokens(emb_prompt.input_ids[0])
 target_tokens = dst_tokenizer.convert_ids_to_tokens(pred)
 
 plot_attention_mask(attention_mask, source_tokens, target_tokens)
+
+source_sentence = src_tokenizer.decode(emb_prompt.input_ids[0], skip_special_tokens=True)
+target_sentence = dst_tokenizer.decode(pred, skip_special_tokens=True)
+
+print(source_sentence)
+print(target_sentence)
+
+results = bleu.compute(predictions=[target_sentence], references=[source_sentence])
+print(results["bleu"])
