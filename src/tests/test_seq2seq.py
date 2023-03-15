@@ -5,7 +5,7 @@ from torch import nn
 import torch.functional as F
 from models.rnn_models import Seq2Seq, Decoder, Encoder, AttentionLayer
 from transformers import AutoTokenizer
-from utils import print_attention_mask
+from utils import plot_attention_mask
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -49,14 +49,13 @@ print(y.shape)
 out = model(x, y)
 print(out.shape)
 
-print("\n\n")
-
 prompt = "I like bikes"
 
 emb_prompt = src_tokenizer([prompt], max_length=src_len, pad_to_max_length=True, truncation=True, padding="max_length", return_tensors='pt')
 pred, attention_mask = model.generate(emb_prompt.input_ids.permute(1, 0), 10)
-print(pred)
 
-print(attention_mask.shape)
 
-print_attention_mask(attention_mask)
+source_tokens = src_tokenizer.convert_ids_to_tokens(emb_prompt.input_ids[0])
+target_tokens = dst_tokenizer.convert_ids_to_tokens(pred)
+
+plot_attention_mask(attention_mask, source_tokens, target_tokens)

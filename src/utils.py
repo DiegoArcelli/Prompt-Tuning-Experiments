@@ -20,8 +20,18 @@ def plot_curves(curve_1, label_1, curve_2=None, label_2=None, fig_name="figure",
     plt.clf()
 
     
-def print_attention_mask(attention_mask):
+def plot_attention_mask(attention_mask, source_tokens, target_tokens):
+
+    skip_tokens = len(source_tokens) if "[PAD]" not in source_tokens else source_tokens.index("[PAD]")
+    source_tokens = source_tokens[:skip_tokens]
+
     attention_mask = attention_mask.squeeze(1)
-    plt.imshow(attention_mask)
+
+    attention_mask = attention_mask[:, :skip_tokens]
+
+    plt.xticks(ticks=[x for x in range(len(source_tokens))], labels=source_tokens, rotation=45)
+    plt.tick_params(top=True, labeltop=True, bottom=False, labelbottom=False)
+    plt.yticks(ticks=[x for x in range(len(target_tokens))], labels=target_tokens)
+    plt.imshow(attention_mask, cmap='gray', vmin=0, vmax=1)
     plt.show()
     
