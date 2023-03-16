@@ -17,7 +17,8 @@ config = {
     "dec_hidden_dim": 8,
     "max_epochs": 1,
     "batch_size": 4,
-    "seed": 7
+    "seed": 7,
+    "device": device
 }
 
 src_tokenizer = AutoTokenizer.from_pretrained("dbmdz/bert-base-italian-cased")

@@ -305,8 +305,8 @@ class Seq2Seq(nn.Module):
         self.start_idx = start_idx
         self.end_idx = end_idx
 
-        self.encoder = Encoder(enc_vocab_dim, enc_hidden_dim, dec_hidden_dim, enc_n_layers)
-        self.decoder = Decoder(dec_vocab_dim, enc_hidden_dim, dec_hidden_dim, dec_n_layers)
+        self.encoder = Encoder(enc_vocab_dim, enc_hidden_dim, dec_hidden_dim, enc_n_layers).to(device)
+        self.decoder = Decoder(dec_vocab_dim, enc_hidden_dim, dec_hidden_dim, dec_n_layers).to(device)
 
 
 
@@ -335,17 +335,19 @@ class Seq2Seq(nn.Module):
         batch_size = target.shape[1]
 
         '''
+        We prepare a tensor of size (dst_len, batch_size, dec_vocab_dim)
+        that will store the output of the model
+        '''
+        outputs = torch.zeros(target_len, batch_size, self.dec_vocab_dim).to(self.device)
+
+
+
+        '''
         The source sentences are processed by the encoder that returns:
         - enc_output: a tensor of size (length, batch_size, 2*enc_hidden_dim)
         - hidden: a tensor of size (batch_size, dec_hidden_dim)
         '''
         enc_output, hidden = self.encoder(source)
-
-        '''
-        We prepare a tensor of size (dst_len, batch_size, dec_vocab_dim)
-        that will store the output of the model
-        '''
-        outputs = torch.zeros(target_len, batch_size, self.dec_vocab_dim)
 
         '''
         We take the first token of each target sentence of the batch,

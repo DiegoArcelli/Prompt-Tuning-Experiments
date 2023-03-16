@@ -19,8 +19,8 @@ import evaluate
 class Trainer:
 
     def __init__(self, model, src_tokenizer, dst_tokenizer, config) -> None:
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model = model
+        self.device = config["device"]#torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model = model.to(self.device)
         self.src_tokenizer = src_tokenizer
         self.dst_tokenizer = dst_tokenizer
         self.config = config

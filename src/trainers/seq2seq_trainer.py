@@ -39,6 +39,9 @@ class Seq2SeqTrainer(Trainer):
                 self.optimizer.zero_grad()
 
                 inputs, targets = batch
+                
+                inputs = inputs.to(self.device)
+                targets = targets.to(self.device)
 
                 '''
                 reshape input tensors from (batch_size, length) to (length, batch_size)
@@ -62,7 +65,7 @@ class Seq2SeqTrainer(Trainer):
                 total_loss += loss.item()
 
                 if (step+1) % 10 == 0:
-                    print(f"Epoch {epoch}, samples {step+1}/{n} train loss: {total_loss/(step+1)}")
+                    print(f"\nEpoch {epoch}, samples {step+1}/{n} train loss: {total_loss/(step+1)}")
 
                 pbar.update(1)
 
@@ -84,6 +87,8 @@ class Seq2SeqTrainer(Trainer):
                 self.optimizer.zero_grad()
 
                 inputs, targets = batch
+                inputs = inputs.to(self.device)
+                targets = targets.to(self.device)
 
                 '''
                 reshape input tensors from (batch_size, length) to (length, batch_size)
@@ -107,7 +112,7 @@ class Seq2SeqTrainer(Trainer):
                 total_loss += loss.item()
 
                 if (step+1) % 10 == 0:
-                    print(f"Epoch {epoch}, samples {step+1}/{n} validation loss: {total_loss/(step+1)}")
+                    print(f"\nEpoch {epoch}, samples {step+1}/{n} validation loss: {total_loss/(step+1)}")
 
                 pbar.update(1)
 
@@ -130,6 +135,8 @@ class Seq2SeqTrainer(Trainer):
                 self.optimizer.zero_grad()
 
                 inputs, targets = batch
+                inputs = inputs.to(self.device)
+                targets = targets.to(self.device)
 
                 '''
                 reshape input tensors from (batch_size, length) to (length, batch_size)
