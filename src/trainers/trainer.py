@@ -14,12 +14,14 @@ from utils import plot_curves
 import os
 from trainer_constants import *
 import evaluate
+from tqdm import tqdm
 
 
 class Trainer:
 
     def __init__(self, model, src_tokenizer, dst_tokenizer, config) -> None:
-        self.device = config["device"]#torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        self.device = config["device"]
         self.model = model.to(self.device)
         self.src_tokenizer = src_tokenizer
         self.dst_tokenizer = dst_tokenizer
@@ -138,9 +140,9 @@ class Trainer:
 
         self.train_loop(train_loader, val_loader)
         self.model.eval()
-        test_loss = print("Evaluating model on the test set")
+        test_loss = self.test_step(test_loader)
+        print("Evaluating model on the test set")
         print(f"Test loss: {test_loss}")
-        self.test_step(test_loader)
 
         # evaluate bleu score
         train_score = self.metric_evaluation(train_loader, generate_fun)
@@ -150,9 +152,6 @@ class Trainer:
         print(f"Average train set BLEU score: {train_score}")
         print(f"Average validation set BLEU score: {val_score}")
         print(f"Average test set BLEU score: {test_score}")
-        
-
-
 
 
     def train_loop(self, train_loader, val_loader):
@@ -192,21 +191,91 @@ class Trainer:
         
 
 
-    def train_step(self, train_loader):
+    def train_step(self, train_loader, epoch):
 
-        for step, batch in enumerate(train_loader):
-            self.optimizer.zero_grad()
-            inputs, targets = batch
-            output = self.model(inputs, targets)
-            logits = output.logits
+        total_loss = 0
+        n = len(train_loader)
 
+        with tqdm(total=n) as pbar:
+            for step, batch in enumerate(train_loader):
+
+                self.optimizer.zero_grad()
+                inputs, targets = batch
+
+                inputs = inputs.to(self.device)
+                targets = targets.to(self.device)
+
+                input_ids = inputs.input_ids
+                target_ids = targets.input_ids
+
+                output = self.model(input_ids=input_ids, decoder_input_ids=target_ids)
+
+                logits = output.logits
+
+                logits_dim = logits.shape[-1]
+
+                logits = logits[1:].view(-1, logits_dim)
+                target_ids = target_ids[1:].reshape(-1)
+
+                loss = self.criterion(logits, target_ids)
+                
+                loss.backward()
+
+                self.optimizer.step()
+
+                total_loss += loss.item()
+
+                if (step+1) % 10 == 0:
+                    print(f"\nEpoch {epoch}, samples {step+1}/{n} train loss: {total_loss/(step+1)}")
+
+                pbar.update(1)
+                
+                break
+
+                
+        avg_loss = total_loss / n
+
+        return avg_loss
+            
     
-    def val_step(self, val_loader):
+    def val_step(self, val_loader, epoch):
 
-        for step, batch in enumerate(val_loader):
-            inputs, targets = batch
-            output = self.model(inputs, targets)
-            logits = output.logits
+        total_loss = 0
+        n = len(val_loader)
+
+        with tqdm(total=n) as pbar:
+            for step, batch in enumerate(val_loader):
+
+                inputs, targets = batch
+
+                inputs = inputs.to(self.device)
+                targets = targets.to(self.device)
+
+                input_ids = inputs.input_ids
+                target_ids = targets.input_ids
+
+                output = self.model(input_ids=input_ids, decoder_input_ids=target_ids)
+                logits = output.logits
+
+                logits_dim = logits.shape[-1]
+
+                logits = logits[1:].view(-1, logits_dim)
+                target_ids = target_ids[1:].reshape(-1)
+
+                loss = self.criterion(logits, target_ids)
+
+                total_loss += loss.item()
+
+                if (step+1) % 10 == 0:
+                    print(f"\nEpoch {epoch}, samples {step+1}/{n} train loss: {total_loss/(step+1)}")
+
+                pbar.update(1)
+
+                break
+
+        avg_loss = total_loss / n
+
+        return avg_loss
 
 
     
@@ -214,11 +283,39 @@ class Trainer:
 
         self.model.load_state_dict(torch.load(f"{CHECKPOINT_DIR}/model_{self.model_name}_{self.best_epoch}_checkpoint.pt"))
         
-        for step, batch in enumerate(test_loader):
-            inputs, targets = batch
-            pred_ids = self.model.generate(inputs.input_ids)
-            pred_sentences = self.dst_tokenizer.decode(pred_ids)
-            target_sentences = self.dst_tokenizer.decode(targets.input_ids)
+        total_loss = 0
+        n = len(test_loader)
+
+        with tqdm(total=n) as pbar:
+            for step, batch in enumerate(test_loader):
+                
+                inputs, targets = batch
+
+                inputs = inputs.to(self.device)
+                targets = targets.to(self.device)
+
+                input_ids = inputs.input_ids
+                target_ids = targets.input_ids
+
+                output = self.model(input_ids=input_ids, decoder_input_ids=target_ids)
+                logits = output.logits
+
+                logits_dim = logits.shape[-1]
+
+                logits = logits[1:].view(-1, logits_dim)
+                target_ids = target_ids[1:].reshape(-1)
+
+                loss = self.criterion(logits, target_ids)
+
+                total_loss += loss.item()
+
+                pbar.update(1)
+
+                break
+
+        avg_loss = total_loss / n
+
+        return avg_loss
             
 
     
@@ -238,14 +335,16 @@ class Trainer:
             inputs, targets = batch
 
             for i in range(len(inputs.input_ids)):
-                print(i)
 
-                print(inputs.input_ids[i].shape)
                 input_ids = inputs.input_ids[i]
                 target_ids = targets.input_ids[i]
 
-                pred_ids, attention = generate_fun(input_ids.unsqueeze(0))
+                output = generate_fun(input_ids.unsqueeze(0))
 
+                if type(output) == tuple:
+                    pred_ids, attention = output
+                else:
+                    pred_ids = output[0]
                 # source_tokens = self.src_tokenizer.convert_ids_to_tokens(pred_ids)
                 # target_tokens = self.dst_tokenizer.convert_ids_to_tokens(target_ids)
 

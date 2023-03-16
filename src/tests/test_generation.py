@@ -22,7 +22,7 @@ model = T5ForConditionalGeneration.from_pretrained("t5-small")
 tokenizer = T5Tokenizer.from_pretrained("t5-small")
 # tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
 
-model = GPT2LMHeadModel.from_pretrained("gpt2", pad_token_id=tokenizer.eos_token_id)
+# model = GPT2LMHeadModel.from_pretrained("gpt2", pad_token_id=tokenizer.eos_token_id)
 
 
 model.eval()

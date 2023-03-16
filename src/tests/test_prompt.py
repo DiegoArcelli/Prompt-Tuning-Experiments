@@ -13,6 +13,7 @@ model = T5PromptTuning.from_pretrained(
     encoder_hidden_dim=64,
     decoder_hidden_dim=64
 )
+
 tokenizer = T5Tokenizer.from_pretrained("t5-small")
 
 inputs = tokenizer(["Hello, my dog is cute", "I hate black cats", "Stop it"], padding=True, truncation=True, return_tensors="pt")

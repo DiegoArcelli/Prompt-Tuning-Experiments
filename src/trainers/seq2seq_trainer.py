@@ -69,8 +69,8 @@ class Seq2SeqTrainer(Trainer):
 
                 pbar.update(1)
 
-
         avg_loss = total_loss / n
+        
 
         return avg_loss
     
@@ -83,8 +83,6 @@ class Seq2SeqTrainer(Trainer):
 
         with tqdm(total=n) as pbar:
             for step, batch in enumerate(val_loader):
-
-                self.optimizer.zero_grad()
 
                 inputs, targets = batch
                 inputs = inputs.to(self.device)
@@ -104,10 +102,6 @@ class Seq2SeqTrainer(Trainer):
                 target_ids = target_ids[1:].reshape(-1)
 
                 loss = self.criterion(output, target_ids)
-                
-                loss.backward()
-
-                self.optimizer.step()
 
                 total_loss += loss.item()
 
@@ -123,6 +117,8 @@ class Seq2SeqTrainer(Trainer):
 
 
     def test_step(self, test_loader):
+
+        self.model.load_state_dict(torch.load(f"{CHECKPOINT_DIR}/model_{self.model_name}_{self.best_epoch}_checkpoint.pt"))
         
         total_loss = 0
 
@@ -131,8 +127,6 @@ class Seq2SeqTrainer(Trainer):
         with tqdm(total=n) as pbar:
 
             for step, batch in enumerate(test_loader):
-
-                self.optimizer.zero_grad()
 
                 inputs, targets = batch
                 inputs = inputs.to(self.device)
@@ -152,10 +146,6 @@ class Seq2SeqTrainer(Trainer):
                 target_ids = target_ids[1:].reshape(-1)
 
                 loss = self.criterion(output, target_ids)
-                
-                loss.backward()
-
-                self.optimizer.step()
 
                 total_loss += loss.item()
 

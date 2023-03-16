@@ -41,4 +41,4 @@ model = Seq2Seq(
 
 trainer = Seq2SeqTrainer(model, src_tokenizer, dst_tokenizer, config)
 
-trainer.train(lambda x: model.generate(x, max_len=100))
+trainer.train(lambda x: model.generate(x, max_len=200))
