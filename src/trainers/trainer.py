@@ -260,6 +260,3 @@ class Trainer:
             score /= len(data_loader)
 
             return score
-
-
-                

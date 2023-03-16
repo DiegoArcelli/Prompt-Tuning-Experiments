@@ -1,4 +1,4 @@
-from torch.utils.data import Dataset, RandomSampler
+from torch.utils.data import Dataset
 
 
 class AnkiDataset(Dataset):
