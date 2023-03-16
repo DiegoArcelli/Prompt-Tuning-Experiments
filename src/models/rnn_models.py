@@ -385,6 +385,8 @@ class Seq2Seq(nn.Module):
     '''
     def generate(self, source, max_len=50):
 
+        source = source.permute(1, 0)
+
         self.eval()
 
         src_len = source.shape[0]

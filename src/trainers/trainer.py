@@ -138,6 +138,8 @@ class Trainer:
 
         self.train_loop(train_loader, val_loader)
         self.model.eval()
+        test_loss = print("Evaluating model on the test set")
+        print(f"Test loss: {test_loss}")
         self.test_step(test_loader)
 
         # evaluate bleu score
@@ -166,9 +168,11 @@ class Trainer:
 
         for epoch in range(1, epochs+1):
             self.model.train()
-            train_loss = self.train_step(train_loader)
+            print(f"Training epoch {epoch}/{epochs}")
+            train_loss = self.train_step(train_loader, epoch)
             self.model.eval()
-            val_loss = self.val_step(val_loader)
+            print(f"Validation epoch {epoch}/{epochs}")
+            val_loss = self.val_step(val_loader, epoch)
 
             if val_loss < best_val_loss:
                 if best_loss_epoch != None:
@@ -233,12 +237,14 @@ class Trainer:
 
             inputs, targets = batch
 
-            for i in range(len(inputs)):
+            for i in range(len(inputs.input_ids)):
+                print(i)
 
-                input_ids = inputs[i].input_ids.permute(1, 0)
-                target_ids = targets[i].input_ids
+                print(inputs.input_ids[i].shape)
+                input_ids = inputs.input_ids[i]
+                target_ids = targets.input_ids[i]
 
-                pred_ids, attention = generate_fun(input_ids)
+                pred_ids, attention = generate_fun(input_ids.unsqueeze(0))
 
                 # source_tokens = self.src_tokenizer.convert_ids_to_tokens(pred_ids)
                 # target_tokens = self.dst_tokenizer.convert_ids_to_tokens(target_ids)
@@ -248,6 +254,8 @@ class Trainer:
 
                 result = self.metric.compute(predictions=[pred_sentence], references=[target_sentence])
                 score += result["bleu"]
+
+                break
 
             score /= len(data_loader)
 

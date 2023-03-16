@@ -13,7 +13,7 @@ import random
 import numpy as np
 import time
 from trainer import Trainer
-
+from tqdm import tqdm
 
 
 class Seq2SeqTrainer(Trainer):
@@ -28,81 +28,90 @@ class Seq2SeqTrainer(Trainer):
 
 
 
-    def train_step(self, train_loader):
+    def train_step(self, train_loader, epoch):
 
         total_loss = 0
+        n = len(train_loader)
 
-        for step, batch in enumerate(train_loader):
+        with tqdm(total=n) as pbar:
+            for step, batch in enumerate(train_loader):
 
-            self.optimizer.zero_grad()
+                self.optimizer.zero_grad()
 
-            inputs, targets = batch
+                inputs, targets = batch
 
-            '''
-            reshape input tensors from (batch_size, length) to (length, batch_size)
-            '''
-            input_ids = inputs.input_ids.permute(1, 0)
-            target_ids = targets.input_ids.permute(1, 0)
+                '''
+                reshape input tensors from (batch_size, length) to (length, batch_size)
+                '''
+                input_ids = inputs.input_ids.permute(1, 0)
+                target_ids = targets.input_ids.permute(1, 0)
 
-            output = self.model(input_ids, target_ids)
+                output = self.model(input_ids, target_ids)
 
-            output_dim = output.shape[-1]
+                output_dim = output.shape[-1]
 
-            output = output[1:].view(-1, output_dim)
-            target_ids = target_ids[1:].reshape(-1)
+                output = output[1:].view(-1, output_dim)
+                target_ids = target_ids[1:].reshape(-1)
 
-            loss = self.criterion(output, target_ids)
-            
-            loss.backward()
+                loss = self.criterion(output, target_ids)
+                
+                loss.backward()
 
-            self.optimizer.step()
+                self.optimizer.step()
 
-            total_loss += loss.item()
+                total_loss += loss.item()
 
-            break
+                if (step+1) % 10 == 0:
+                    print(f"Epoch {epoch}, samples {step+1}/{n} train loss: {total_loss/(step+1)}")
+
+                pbar.update(1)
 
 
-        avg_loss = total_loss / len(train_loader)
+        avg_loss = total_loss / n
 
         return avg_loss
     
 
 
-    def val_step(self, val_loader):
+    def val_step(self, val_loader, epoch):
         
         total_loss = 0
+        n = len(val_loader)
 
-        for step, batch in enumerate(val_loader):
+        with tqdm(total=n) as pbar:
+            for step, batch in enumerate(val_loader):
 
-            self.optimizer.zero_grad()
+                self.optimizer.zero_grad()
 
-            inputs, targets = batch
+                inputs, targets = batch
 
-            '''
-            reshape input tensors from (batch_size, length) to (length, batch_size)
-            '''
-            input_ids = inputs.input_ids.permute(1, 0)
-            target_ids = targets.input_ids.permute(1, 0)
+                '''
+                reshape input tensors from (batch_size, length) to (length, batch_size)
+                '''
+                input_ids = inputs.input_ids.permute(1, 0)
+                target_ids = targets.input_ids.permute(1, 0)
 
-            output = self.model(input_ids, target_ids)
+                output = self.model(input_ids, target_ids)
 
-            output_dim = output.shape[-1]
+                output_dim = output.shape[-1]
 
-            output = output[1:].view(-1, output_dim)
-            target_ids = target_ids[1:].reshape(-1)
+                output = output[1:].view(-1, output_dim)
+                target_ids = target_ids[1:].reshape(-1)
 
-            loss = self.criterion(output, target_ids)
-            
-            loss.backward()
+                loss = self.criterion(output, target_ids)
+                
+                loss.backward()
 
-            self.optimizer.step()
+                self.optimizer.step()
 
-            total_loss += loss.item()
+                total_loss += loss.item()
 
-            break
+                if (step+1) % 10 == 0:
+                    print(f"Epoch {epoch}, samples {step+1}/{n} validation loss: {total_loss/(step+1)}")
 
+                pbar.update(1)
 
-        avg_loss = total_loss / len(val_loader)
+        avg_loss = total_loss / n
 
         return avg_loss
     
@@ -112,35 +121,38 @@ class Seq2SeqTrainer(Trainer):
         
         total_loss = 0
 
-        for step, batch in enumerate(test_loader):
+        n = len(test_loader)
 
-            self.optimizer.zero_grad()
+        with tqdm(total=n) as pbar:
 
-            inputs, targets = batch
+            for step, batch in enumerate(test_loader):
 
-            '''
-            reshape input tensors from (batch_size, length) to (length, batch_size)
-            '''
-            input_ids = inputs.input_ids.permute(1, 0)
-            target_ids = targets.input_ids.permute(1, 0)
+                self.optimizer.zero_grad()
 
-            output = self.model(input_ids, target_ids)
+                inputs, targets = batch
 
-            output_dim = output.shape[-1]
+                '''
+                reshape input tensors from (batch_size, length) to (length, batch_size)
+                '''
+                input_ids = inputs.input_ids.permute(1, 0)
+                target_ids = targets.input_ids.permute(1, 0)
 
-            output = output[1:].view(-1, output_dim)
-            target_ids = target_ids[1:].reshape(-1)
+                output = self.model(input_ids, target_ids)
 
-            loss = self.criterion(output, target_ids)
-            
-            loss.backward()
+                output_dim = output.shape[-1]
 
-            self.optimizer.step()
+                output = output[1:].view(-1, output_dim)
+                target_ids = target_ids[1:].reshape(-1)
 
-            total_loss += loss.item()
+                loss = self.criterion(output, target_ids)
+                
+                loss.backward()
 
-            break
+                self.optimizer.step()
 
+                total_loss += loss.item()
+
+                pbar.update(1)
 
         avg_loss = total_loss / len(test_loader)
 

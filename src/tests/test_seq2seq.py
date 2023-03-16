@@ -52,7 +52,7 @@ print(out.shape)
 prompt = "I like bikes"
 
 emb_prompt = src_tokenizer([prompt], max_length=src_len, pad_to_max_length=True, truncation=True, padding="max_length", return_tensors='pt')
-pred, attention_mask = model.generate(emb_prompt.input_ids.permute(1, 0), 10)
+pred, attention_mask = model.generate(emb_prompt.input_ids, 10)
 
 
 source_tokens = src_tokenizer.convert_ids_to_tokens(emb_prompt.input_ids[0])

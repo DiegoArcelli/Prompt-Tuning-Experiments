@@ -15,8 +15,8 @@ config = {
     "dst_vocab_size": 28996,
     "enc_hidden_dim": 8,
     "dec_hidden_dim": 8,
-    "max_epochs": 3,
-    "batch_size": 8,
+    "max_epochs": 1,
+    "batch_size": 4,
     "seed": 7
 }
 
@@ -40,4 +40,4 @@ model = Seq2Seq(
 
 trainer = Seq2SeqTrainer(model, src_tokenizer, dst_tokenizer, config)
 
-trainer.train(lambda x: model.generate(x, max_length=100))
+trainer.train(lambda x: model.generate(x, max_len=100))
