@@ -25,6 +25,7 @@ targets = tokenizer(["Ciao, il mio cane è carino", "Odio i gatti neri", "Smetti
 
 print("\n\n")
 
+print(inputs.input_ids.shape, targets.input_ids.shape)
 
 out = model(
     input_ids = inputs.input_ids,
@@ -34,3 +35,5 @@ out = model(
     labels=targets.input_ids
 )
 print(out.keys())
+logits = out.logits
+print(logits.shape)

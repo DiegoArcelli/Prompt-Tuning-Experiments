@@ -235,9 +235,6 @@ class T5PromptTuningMixin:
 
 
     def generate(self, *args, **kwargs):
-        # This fixes CUDA for some reason
-        #print("device = ", self.device)
-        #print("the shape input embeds = ", kwargs['inputs_embeds'].shape)
 
         kwargs['inputs_embeds'] = self.concatenate_encoder_soft_prompts(kwargs['input_ids'])
         kwargs['attention_mask']=self.extend_attention_mask(torch.ones([1,kwargs['inputs_embeds'].shape[1]-self.n_tokens]).long())

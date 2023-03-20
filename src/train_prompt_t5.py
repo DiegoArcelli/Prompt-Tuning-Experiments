@@ -1,8 +1,7 @@
 import sys
 sys.path.append("./../")
 sys.path.append("./../trainer/")
-from models.nmt_models import T5ForNMT
-from trainers.seq2seq_trainer import Trainer
+from trainers.prompt_trainer import PromptTuningTrainer
 from models.prompt_tuning_models import T5PromptTuning
 from transformers import AutoTokenizer
 import torch
@@ -27,18 +26,17 @@ config = {
 src_tokenizer = AutoTokenizer.from_pretrained("dbmdz/bert-base-italian-cased")
 dst_tokenizer = AutoTokenizer.from_pretrained('bert-base-cased')
 
-model = T5ForNMT.from_pretrained("t5-small", hidden_size=512, voc_size=28996)
-# model = T5PromptTuning.from_pretrained(
-#     "t5-small",
-#     encoder_soft_prompt_path = None,
-#     decoder_soft_prompt_path = None,
-#     encoder_n_tokens = 20,
-#     decoder_n_tokens = 20,
-#     encoder_hidden_dim=64,
-#     decoder_hidden_dim=64
-# )
+model = T5PromptTuning.from_pretrained(
+    "t5-small",
+    encoder_soft_prompt_path = None,
+    decoder_soft_prompt_path = None,
+    encoder_n_tokens = 40,
+    decoder_n_tokens = 40,
+    encoder_hidden_dim=64,
+    decoder_hidden_dim=64
+)
 
-trainer = Trainer(model, src_tokenizer, dst_tokenizer, config)
+trainer = PromptTuningTrainer(model, src_tokenizer, dst_tokenizer, config)
 
 generate_fun = lambda x: model.generate(
     input_ids=x, 
