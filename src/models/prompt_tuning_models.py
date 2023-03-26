@@ -77,8 +77,8 @@ class T5PromptTuningMixin:
 
         model.decoder_emb_generator = decoder_emb_generator
 
-        model.encoder_input_tokens = torch.arange(encoder_n_tokens).long()
-        model.decoder_input_tokens = torch.arange(decoder_n_tokens).long()
+        model.encoder_input_tokens = torch.arange(encoder_n_tokens).long().to(device)
+        model.decoder_input_tokens = torch.arange(decoder_n_tokens).long().to(device)
 
         return model
     
@@ -140,7 +140,7 @@ class T5PromptTuningMixin:
 
     def extend_labels(self, labels, ignore_index=-100):
         batch_size = labels.shape[0]
-        soft_prompts_indices = torch.full((batch_size, self.decoder_n_tokens), ignore_index)
+        soft_prompts_indices = torch.full((batch_size, self.decoder_n_tokens), ignore_index).to(self.device)
         extended_labels = torch.concat([soft_prompts_indices, labels], dim=1)
         return extended_labels
 
@@ -236,8 +236,8 @@ class T5PromptTuningMixin:
 
     def generate(self, *args, **kwargs):
 
-        kwargs['inputs_embeds'] = self.concatenate_encoder_soft_prompts(kwargs['input_ids'])
-        kwargs['attention_mask']=self.extend_attention_mask(torch.ones([1,kwargs['inputs_embeds'].shape[1]-self.n_tokens]).long())
+        kwargs['inputs_embeds'] = self.concatenate_encoder_soft_prompts(kwargs['input_ids']).to(self.device)
+        kwargs['attention_mask']=self.extend_attention_mask(torch.ones([1,kwargs['inputs_embeds'].shape[1]-self.n_tokens]).long()).to(self.device)
 
         del kwargs['input_ids']
 

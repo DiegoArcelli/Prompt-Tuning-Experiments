@@ -213,16 +213,10 @@ class Trainer:
 
                 logits = output.logits
 
-                print(logits.shape)
-                print(target_ids.shape)
-
                 logits_dim = logits.shape[-1]
 
                 logits = logits[1:].view(-1, logits_dim)
                 target_ids = target_ids[1:].reshape(-1)
-
-                print(logits.shape)
-                print(target_ids.shape)
 
                 loss = self.criterion(logits, target_ids)
                 
@@ -332,7 +326,6 @@ class Trainer:
         self.model.load_state_dict(torch.load(f"{CHECKPOINT_DIR}/model_{self.model_name}_{self.best_epoch}_checkpoint.pt"))
         self.model.eval()
 
-
         score = 0
 
         for step, batch in enumerate(data_loader):
@@ -346,9 +339,7 @@ class Trainer:
                 input_ids = inputs.input_ids[i]
                 target_ids = targets.input_ids[i]
 
-                print("AAAAAAAAAAAAAAAAAAAAAAAAAA")
                 output = generate_fun(input_ids.unsqueeze(0))
-                print("AAAAAAAAAAAAAAAAAAAAAAAAAA")
 
                 if type(output) == tuple:
                     pred_ids, attention = output
@@ -359,8 +350,6 @@ class Trainer:
 
                 pred_sentence = self.src_tokenizer.decode(pred_ids, skip_special_tokens=True)
                 target_sentence = self.dst_tokenizer.decode(target_ids, skip_special_tokens=True)
-
-                print(pred_sentence, target_sentence)
 
                 result = self.metric.compute(predictions=[pred_sentence], references=[target_sentence])
                 score += result["bleu"]
