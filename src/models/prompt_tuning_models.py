@@ -270,8 +270,6 @@ class T5PromptTuningMixinSimple:
         decoder_soft_prompt_path = None,
         encoder_n_tokens = None,
         decoder_n_tokens = None,
-        encoder_hidden_dim = None,
-        decoder_hidden_dim = None,
         initialize_from_vocab = True,
         random_range = 0.5,
         device=None,
@@ -292,7 +290,7 @@ class T5PromptTuningMixinSimple:
         if encoder_soft_prompt_path is not None:
             model.set_encoder_soft_prompts(encoder_soft_prompt_path)
         else:
-            model.initialize_encoder_soft_prompts(encoder_n_tokens, encoder_hidden_dim, random_range)
+            model.initialize_encoder_soft_prompts(encoder_n_tokens, random_range)
 
         '''
         load the encoder soft prompts if the path is provided otheriwise they
@@ -301,7 +299,7 @@ class T5PromptTuningMixinSimple:
         if decoder_soft_prompt_path is not None:
             model.set_decoder_soft_prompts(decoder_soft_prompt_path)
         else:
-            model.initialize_decoder_soft_prompts(decoder_n_tokens, decoder_hidden_dim, random_range)
+            model.initialize_decoder_soft_prompts(decoder_n_tokens, random_range)
 
         model.encoder_n_tokens = encoder_n_tokens
         model.decoder_n_tokens = decoder_n_tokens 
@@ -312,9 +310,9 @@ class T5PromptTuningMixinSimple:
         return model
     
 
-    def initialize_encoder_soft_prompts(self, n_tokens, hidden_dim, random_range=0.5):
+    def initialize_encoder_soft_prompts(self, n_tokens, random_range=0.5):
         self.n_tokens = n_tokens
-        self.encoder_soft_prompt = nn.Embedding(n_tokens, hidden_dim)
+        self.encoder_soft_prompt = nn.Embedding(n_tokens, self.config.d_model)
         # init_prompt_value = torch.FloatTensor(2, 10).uniform_(-random_range, random_range)
         # self.encoder_soft_prompt.weight = nn.parameter.Parameter(init_prompt_value)
 
@@ -324,9 +322,9 @@ class T5PromptTuningMixinSimple:
         self.n_tokens = self.encoder_soft_prompt.num_embeddings
 
 
-    def initialize_decoder_soft_prompts(self, n_tokens, hidden_dim, random_range=0.5):
+    def initialize_decoder_soft_prompts(self, n_tokens, random_range=0.5):
         self.n_tokens = n_tokens
-        self.decoder_soft_prompt = nn.Embedding(n_tokens, hidden_dim)
+        self.decoder_soft_prompt = nn.Embedding(n_tokens, self.config.d_model)
         # init_prompt_value = torch.FloatTensor(2, 10).uniform_(-random_range, random_range)
         # self.decoder_soft_prompt.weight = nn.parameter.Parameter(init_prompt_value)
 
