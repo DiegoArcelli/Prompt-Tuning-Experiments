@@ -1,15 +1,29 @@
 from torch.utils.data import Dataset
-
+import random
 
 class AnkiDataset(Dataset):
 
-    def __init__(self, data_path, tokenizer_src, tokenizer_dst, src_max_length, dst_max_length) -> None:
+    def __init__(self,
+                 data_path,
+                 tokenizer_src,
+                 tokenizer_dst,
+                 src_max_length,
+                 dst_max_length,
+                 subsample=False,
+                 frac=1.0,
+                 seed=42
+                ) -> None:
         super().__init__()
         self.tokenizer_src = tokenizer_src
         self.tokenizer_dst = tokenizer_dst
         self.src_max_length = src_max_length
         self.dst_max_length = dst_max_length
+        self.seed = seed
+        self.frac = frac
+        self.subsample = subsample
+        random.seed(self.seed)
         self.data = self.get_data(data_path)
+
 
     def __len__(self):
         return len(self.data)
@@ -35,7 +49,12 @@ class AnkiDataset(Dataset):
     the list is a list of the elment containing the english and italian sentence
     '''
     def get_data(self, data_path="./../dataset/ita.txt"):
+
         with open(data_path, "r") as dataset:
             sentences = [tuple(sentence.split("\t")[:2]) for sentence in dataset.readlines()]
+            
+        if self.subsample == True:
+            k = int(len(sentences)*self.frac)
+            sentences = random.sample(sentences, k)
 
         return sentences
