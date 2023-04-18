@@ -226,12 +226,10 @@ class Trainer:
 
                 total_loss += loss.item()
 
-                if (step+1) % 10 == 0:
+                if (step+1) % 50 == 0:
                     print(f"\nEpoch {epoch}, samples {step+1}/{n} train loss: {total_loss/(step+1)}")
 
                 pbar.update(1)
-                
-                break
 
                 
         avg_loss = total_loss / n
@@ -267,12 +265,10 @@ class Trainer:
 
                 total_loss += loss.item()
 
-                if (step+1) % 10 == 0:
+                if (step+1) % 50 == 0:
                     print(f"\nEpoch {epoch}, samples {step+1}/{n} train loss: {total_loss/(step+1)}")
 
                 pbar.update(1)
-
-                break
 
         avg_loss = total_loss / n
 
@@ -312,8 +308,6 @@ class Trainer:
 
                 pbar.update(1)
 
-                break
-
         avg_loss = total_loss / n
 
         return avg_loss
@@ -326,6 +320,7 @@ class Trainer:
         self.model.load_state_dict(torch.load(f"{CHECKPOINT_DIR}/model_{self.model_name}_{self.best_epoch}_checkpoint.pt"))
         self.model.eval()
 
+
         score = 0
 
         for step, batch in enumerate(data_loader):
@@ -333,6 +328,9 @@ class Trainer:
             self.optimizer.zero_grad()
 
             inputs, targets = batch
+
+            inputs = inputs.to(self.device)
+            targets = targets.to(self.device)
 
             for i in range(len(inputs.input_ids)):
 
@@ -345,16 +343,12 @@ class Trainer:
                     pred_ids, attention = output
                 else:
                     pred_ids = output[0]
-                # source_tokens = self.src_tokenizer.convert_ids_to_tokens(pred_ids)
-                # target_tokens = self.dst_tokenizer.convert_ids_to_tokens(target_ids)
 
                 pred_sentence = self.src_tokenizer.decode(pred_ids, skip_special_tokens=True)
                 target_sentence = self.dst_tokenizer.decode(target_ids, skip_special_tokens=True)
 
                 result = self.metric.compute(predictions=[pred_sentence], references=[target_sentence])
                 score += result["bleu"]
-
-                break
 
             score /= len(data_loader)
 

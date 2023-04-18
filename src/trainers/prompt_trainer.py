@@ -7,11 +7,23 @@ from torch import optim
 from trainer import Trainer
 from tqdm import tqdm
 
+
 class PromptTuningTrainer(Trainer):
 
 
     def __init__(self, model, src_tokenizer, dst_tokenizer, config) -> None:
         super(PromptTuningTrainer, self).__init__(model, src_tokenizer, dst_tokenizer, config)
+
+        prefixes = [
+            "encoder_soft_prompt",
+            "decoder_soft_prompt",
+            "encoder_emb_generator",
+            "decoder_emb_generator"
+            ]
+        
+        prompt_parameters = [p for n, p in model.named_parameters() if any([n.startswith(prefix) for prefix in prefixes])]
+        self.optimizer = optim.Adam(prompt_parameters, lr=0.1)
+    
 
     
     def train_step(self, train_loader, epoch):
@@ -50,12 +62,10 @@ class PromptTuningTrainer(Trainer):
 
                 total_loss += loss.item()
 
-                if (step+1) % 10 == 0:
+                if (step+1) % 100 == 0:
                     print(f"\nEpoch {epoch}, samples {step+1}/{n} train loss: {total_loss/(step+1)}")
 
                 pbar.update(1)
-                
-                break
 
                 
         avg_loss = total_loss / n
@@ -94,12 +104,10 @@ class PromptTuningTrainer(Trainer):
 
                 total_loss += loss.item()
 
-                if (step+1) % 10 == 0:
+                if (step+1) % 100 == 0:
                     print(f"\nEpoch {epoch}, samples {step+1}/{n} train loss: {total_loss/(step+1)}")
 
                 pbar.update(1)
-
-                break
 
         avg_loss = total_loss / n
 
@@ -142,7 +150,6 @@ class PromptTuningTrainer(Trainer):
 
                 pbar.update(1)
 
-                break
 
         avg_loss = total_loss / n
 

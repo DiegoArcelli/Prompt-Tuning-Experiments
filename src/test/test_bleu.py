@@ -20,4 +20,3 @@ print(results)
 # results = sacre_bleu.compute(predictions=predictions, references=references)
 
 # print(results)
-
