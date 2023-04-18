@@ -4,6 +4,7 @@ import sys
 sys.path.append("./../")
 from models.nmt_models import T5ForNMT
 from models.prompt_tuning_models import T5PromptTuning
+import time
 
 
 # model = T5ForConditionalGeneration.from_pretrained("t5-small")
@@ -27,7 +28,8 @@ tokenizer = T5Tokenizer.from_pretrained("t5-small")
 
 model.eval()
 
-prompt = "translate German to English: Würde ich wenn ich gut darin wäre"
+# prompt = "translate German to English: Würde ich wenn ich gut darin wäre"
+prompt = "translate English to German: I don't speak german."
 
 # Tokenize prompt
 encoded_prompt = tokenizer.encode(prompt, add_special_tokens=False, return_tensors="pt")
@@ -62,13 +64,16 @@ encoded_prompt = tokenizer.encode(prompt, add_special_tokens=False, return_tenso
 #     early_stopping=True,
 # )
 
+start = time.time()
 output_sequences = model.generate(
     input_ids=encoded_prompt, 
-    decoder_input_ids=torch.zeros([1,1]).long(), 
+    # decoder_input_ids=torch.zeros([1,1]).long(), 
     max_length=200,
     num_beams=5,
     early_stopping=True,
 )
+end = time.time()
+print("Time for generaiton: ", end-start)
 
 
 # # Decode generated text
