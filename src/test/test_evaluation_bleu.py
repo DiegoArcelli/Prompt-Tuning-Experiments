@@ -10,6 +10,7 @@ from torch.utils.data import random_split
 from torch.utils.data import DataLoader
 from models.prompt_tuning_models import T5PromptTuning
 import time
+from tqdm import tqdm
 import evaluate
 
 device = "cpu"
@@ -20,45 +21,47 @@ metric = evaluate.load("bleu")
 def metric_evaluation(model, data_loader, generate_fun):
         
     model.eval()
-
-
     score = 0
 
-    for step, batch in enumerate(data_loader):
+    n = len(data_loader)
 
-        inputs, targets = batch
+    with tqdm(total=n) as pbar:
+        for step, batch in enumerate(data_loader):
 
-        inputs = inputs.to(device)
-        targets = targets.to(device)
+            inputs, targets = batch
 
-        for i in range(len(inputs.input_ids)):
+            inputs = inputs.to(device)
+            targets = targets.to(device)
 
-            input_ids = inputs.input_ids[i]
-            target_ids = targets.input_ids[i]
+            for i in range(len(inputs.input_ids)):
 
-            output = generate_fun(input_ids.unsqueeze(0))
+                input_ids = inputs.input_ids[i]
+                target_ids = targets.input_ids[i]
 
-            if type(output) == tuple:
-                pred_ids, attention = output
-            else:
-                pred_ids = output[0]
+                output = generate_fun(input_ids.unsqueeze(0))
 
-            pred_sentence = tokenizer.decode(pred_ids, skip_special_tokens=True)
-            target_sentence = tokenizer.decode(target_ids, skip_special_tokens=True)
+                if type(output) == tuple:
+                    pred_ids, attention = output
+                else:
+                    pred_ids = output[0]
 
-            result = metric.compute(predictions=[pred_sentence], references=[target_sentence])
+                pred_sentence = tokenizer.decode(pred_ids, skip_special_tokens=True)
+                target_sentence = tokenizer.decode(target_ids, skip_special_tokens=True)
 
-            if result["bleu"] > 0:
-                print(f"Target: {target_sentence}")
-                print(f"Predicted: {pred_sentence}")
-                print(f"BLEU: {result['bleu']}\n")
-                #print(pred_sentence, target_sentence, result["bleu"])
+                result = metric.compute(predictions=[pred_sentence], references=[target_sentence])
 
-            score += result["bleu"]
+                if result["bleu"] < 0:
+                    print(f"Target: {target_sentence}")
+                    print(f"Predicted: {pred_sentence}")
+                    print(f"BLEU: {result['bleu']}\n")
+                    #print(pred_sentence, target_sentence, result["bleu"])
 
-        score /= len(data_loader)
+                score += result["bleu"]
+                pbar.update(1)
 
-        return score
+    score /= n
+
+    return score
 
 
 model_name = "SEBIS/legal_t5_small_trans_en_it"
@@ -106,11 +109,11 @@ generate_fun = lambda x: model.generate(
     input_ids=x, 
     decoder_input_ids=torch.zeros([1,1]).long().to(device), 
     max_length=200,
-    num_beams=5,
     early_stopping=True,
 )
 
 
+print(len(test_loader))
 score = metric_evaluation(model, test_loader, generate_fun)
 print("\n=========")
 print(score)
