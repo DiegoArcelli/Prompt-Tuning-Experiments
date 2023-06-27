@@ -32,7 +32,7 @@ class AnkiDataset(Dataset):
     def __getitem__(self, index):
         
         src, dst = self.data[index]
-
+        
         src = self.tokenizer_src(src, max_length=self.src_max_length, pad_to_max_length=True, truncation=True, padding="max_length", return_tensors='pt')
         dst = self.tokenizer_dst(dst, max_length=self.dst_max_length, pad_to_max_length=True, truncation=True, padding="max_length", return_tensors='pt')
             
