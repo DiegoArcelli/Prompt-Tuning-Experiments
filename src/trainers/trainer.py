@@ -185,6 +185,7 @@ class Trainer:
             val_losses.append(val_loss)
 
             print(f"Epoch {epoch} train loss: {train_loss}, val_loss: {val_loss}")
+            break
 
         self.best_epoch = best_loss_epoch
 
@@ -230,6 +231,7 @@ class Trainer:
                     print(f"\nEpoch {epoch}, samples {step+1}/{n} train loss: {total_loss/(step+1)}")
 
                 pbar.update(1)
+                break
 
                 
         avg_loss = total_loss / n
@@ -269,6 +271,7 @@ class Trainer:
                     print(f"\nEpoch {epoch}, samples {step+1}/{n} train loss: {total_loss/(step+1)}")
 
                 pbar.update(1)
+                break
 
         avg_loss = total_loss / n
 
@@ -307,6 +310,7 @@ class Trainer:
                 total_loss += loss.item()
 
                 pbar.update(1)
+                break
 
         avg_loss = total_loss / n
 
@@ -320,36 +324,60 @@ class Trainer:
         self.model.load_state_dict(torch.load(f"{CHECKPOINT_DIR}/model_{self.model_name}_{self.best_epoch}_checkpoint.pt"))
         self.model.eval()
 
-
         score = 0
+        n = 0
 
-        for step, batch in enumerate(data_loader):
+        with tqdm(total=len(data_loader)) as pbar:
 
-            self.optimizer.zero_grad()
+            for step, batch in enumerate(data_loader):
 
-            inputs, targets = batch
+                self.optimizer.zero_grad()
 
-            inputs = inputs.to(self.device)
-            targets = targets.to(self.device)
+                inputs, targets = batch
 
-            for i in range(len(inputs.input_ids)):
+                inputs = inputs.to(self.device)
+                targets = targets.to(self.device)
 
-                input_ids = inputs.input_ids[i]
-                target_ids = targets.input_ids[i]
+                del inputs["token_type_ids"]
+                output = generate_fun(inputs)
+                pred_sentences = self.dst_tokenizer.batch_decode(output, skip_special_tokens=True)
+                org_sentences = self.src_tokenizer.batch_decode(inputs.input_ids, skip_special_tokens=True)
+                target_sentences = self.dst_tokenizer.batch_decode(targets.input_ids, skip_special_tokens=True)
 
-                output = generate_fun(input_ids.unsqueeze(0))
 
-                if type(output) == tuple:
-                    pred_ids, attention = output
-                else:
-                    pred_ids = output[0]
+                for i in range(len(pred_sentences)):
+                    pred = pred_sentences[i]#.replace("▁", " ")
+                    targ = target_sentences[i]#.replace("▁", " ")
+                    result = dict()
+                    if pred.replace(" ", "") != "":
+                        result = self.metric.compute(predictions=[pred], references=[targ])
+                    else:
+                        result["bleu"] = 0.0
+                    # print(pred, targ, result["bleu"])
+                    # print("\n", result)
+                    score += result["bleu"]
+                    n+=1
 
-                pred_sentence = self.src_tokenizer.decode(pred_ids, skip_special_tokens=True)
-                target_sentence = self.dst_tokenizer.decode(target_ids, skip_special_tokens=True)
+                pbar.update(1)
 
-                result = self.metric.compute(predictions=[pred_sentence], references=[target_sentence])
-                score += result["bleu"]
+                # for i in range(len(inputs.input_ids)):
 
-            score /= len(data_loader)
+                #     input_ids = inputs.input_ids[i]
+                #     target_ids = targets.input_ids[i]
 
-            return score
+                #     output = generate_fun(input_ids.unsqueeze(0))
+
+                #     if type(output) == tuple:
+                #         pred_ids, attention = output
+                #     else:
+                #         pred_ids = output[0]
+
+                #     pred_sentence = self.src_tokenizer.decode(pred_ids, skip_special_tokens=True)
+                #     target_sentence = self.dst_tokenizer.decode(target_ids, skip_special_tokens=True)
+
+                #     result = self.metric.compute(predictions=[pred_sentence], references=[target_sentence])
+                #     score += result["bleu"]
+
+                # score /= len(data_loader)
+
+            return score/n*100
