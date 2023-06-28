@@ -8,6 +8,7 @@ from transformers import AutoTokenizer
 import torch
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = "cpu"
 
 config = {
     "src_max_length": 183,
@@ -31,11 +32,11 @@ model = T5ForNMT.from_pretrained("t5-small", hidden_size=512, voc_size=28996)
 trainer = Trainer(model, src_tokenizer, dst_tokenizer, config)
 
 generate_fun = lambda x: model.generate(
-    input_ids=x, 
-    decoder_input_ids=torch.zeros([1,1]).long().to(config["device"]), 
-    max_length=200,
-    num_beams=5,
-    early_stopping=True,
+    **x, 
+    # decoder_input_ids=torch.zeros([1,1]).long().to(config["device"]), 
+    # max_length=200,
+    # num_beams=5,
+    # early_stopping=True,
 )
 
 trainer.train(generate_fun)

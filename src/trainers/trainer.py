@@ -32,6 +32,7 @@ class Trainer:
         self.criterion = nn.CrossEntropyLoss(ignore_index=pad_token_idx)
         self.optimizer = optim.Adam(self.model.parameters(), lr=0.1)
         self.pad_token_idx = pad_token_idx
+        self.best_epoch = 0
 
         self.metric = evaluate.load("bleu")
 
@@ -231,7 +232,6 @@ class Trainer:
                     print(f"\nEpoch {epoch}, samples {step+1}/{n} train loss: {total_loss/(step+1)}")
 
                 pbar.update(1)
-                break
 
                 
         avg_loss = total_loss / n
@@ -271,7 +271,6 @@ class Trainer:
                     print(f"\nEpoch {epoch}, samples {step+1}/{n} train loss: {total_loss/(step+1)}")
 
                 pbar.update(1)
-                break
 
         avg_loss = total_loss / n
 
@@ -310,7 +309,6 @@ class Trainer:
                 total_loss += loss.item()
 
                 pbar.update(1)
-                break
 
         avg_loss = total_loss / n
 
@@ -321,7 +319,10 @@ class Trainer:
 
     def metric_evaluation(self, data_loader, generate_fun):
         
-        self.model.load_state_dict(torch.load(f"{CHECKPOINT_DIR}/model_{self.model_name}_{self.best_epoch}_checkpoint.pt"))
+        model_path = f"{CHECKPOINT_DIR}/model_{self.model_name}_{self.best_epoch}_checkpoint.pt"
+
+        if os.path.isfile(model_path):
+            self.model.load_state_dict(torch.load(model_path))
         self.model.eval()
 
         score = 0
@@ -338,10 +339,13 @@ class Trainer:
                 inputs = inputs.to(self.device)
                 targets = targets.to(self.device)
 
-                del inputs["token_type_ids"]
-                output = generate_fun(inputs)
+                gen_inputs = dict()
+                gen_inputs["input_ids"] = inputs["input_ids"]
+                gen_inputs["attention_mask"] = inputs["attention_mask"]
+                
+                output = generate_fun(gen_inputs)
                 pred_sentences = self.dst_tokenizer.batch_decode(output, skip_special_tokens=True)
-                org_sentences = self.src_tokenizer.batch_decode(inputs.input_ids, skip_special_tokens=True)
+                # org_sentences = self.src_tokenizer.batch_decode(inputs.input_ids, skip_special_tokens=True)
                 target_sentences = self.dst_tokenizer.batch_decode(targets.input_ids, skip_special_tokens=True)
 
 
