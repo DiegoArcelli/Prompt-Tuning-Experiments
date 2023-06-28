@@ -28,11 +28,15 @@ tokenizer = T5Tokenizer.from_pretrained("t5-small")
 
 model.eval()
 
+prefix = "translate English to German"
+
 # prompt = "translate German to English: Würde ich wenn ich gut darin wäre"
-prompt = "translate English to German: I don't speak german."
+prompt = [f"{prefix}: I don't speak german.", f"{prefix}: You are really bad.", f"{prefix}: Blue moon you are no longer alone"]
 
 # Tokenize prompt
-encoded_prompt = tokenizer.encode(prompt, add_special_tokens=False, return_tensors="pt")
+encoded_prompt = tokenizer(prompt, max_length=20, pad_to_max_length=True, truncation=True, padding="max_length", return_tensors='pt')
+print(encoded_prompt)
+
 
 # Generate text
 # output_sequences = model.generate(
@@ -66,11 +70,11 @@ encoded_prompt = tokenizer.encode(prompt, add_special_tokens=False, return_tenso
 
 start = time.time()
 output_sequences = model.generate(
-    input_ids=encoded_prompt, 
+    **encoded_prompt 
     # decoder_input_ids=torch.zeros([1,1]).long(), 
-    max_length=200,
-    num_beams=5,
-    early_stopping=True,
+    # max_length=200,
+    # num_beams=5,
+    # early_stopping=True,
 )
 end = time.time()
 print("Time for generaiton: ", end-start)

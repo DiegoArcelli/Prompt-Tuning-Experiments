@@ -47,8 +47,12 @@ def metric_evaluation(model, data_loader, generate_fun):
             
 
             for i in range(len(pred_sentences)):
-                result = metric.compute(predictions=[pred_sentences[i]], references=[target_sentences[i]])
+                pred = pred_sentences[i].replace("▁", " ")
+                targ = target_sentences[i].replace("▁", " ")
+                org = org_sentences[i].replace("▁", " ")
+                result = metric.compute(predictions=[pred], references=[targ])
                 score += result["bleu"]
+                print(org, pred, "\n\n")
                 n+=1
 
 
@@ -77,6 +81,7 @@ data_set = AnkiDataset(
     200,
     subsample=True,
     frac=0.005,
+    prefix=False
 )
 
 

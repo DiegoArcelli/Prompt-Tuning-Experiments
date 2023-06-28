@@ -9,6 +9,7 @@ class AnkiDataset(Dataset):
                  tokenizer_dst,
                  src_max_length,
                  dst_max_length,
+                 prefix=False,
                  subsample=False,
                  frac=1.0,
                  seed=42
@@ -23,6 +24,7 @@ class AnkiDataset(Dataset):
         self.subsample = subsample
         random.seed(self.seed)
         self.data = self.get_data(data_path)
+        self.prefix = prefix
 
 
     def __len__(self):
@@ -32,6 +34,8 @@ class AnkiDataset(Dataset):
     def __getitem__(self, index):
         
         src, dst = self.data[index]
+
+        src = f"translate English to Italian: {src}" if self.prefix else src
         
         src = self.tokenizer_src(src, max_length=self.src_max_length, pad_to_max_length=True, truncation=True, padding="max_length", return_tensors='pt')
         dst = self.tokenizer_dst(dst, max_length=self.dst_max_length, pad_to_max_length=True, truncation=True, padding="max_length", return_tensors='pt')
