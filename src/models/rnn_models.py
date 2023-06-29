@@ -336,7 +336,7 @@ class Seq2Seq(nn.Module):
 
         '''
         We prepare a tensor of size (dst_len, batch_size, dec_vocab_dim)
-        that will store the output of the model
+        that will store the output of the model.to.to.to
         '''
         outputs = torch.zeros(target_len, batch_size, self.dec_vocab_dim).to(self.device)
 
@@ -387,6 +387,7 @@ class Seq2Seq(nn.Module):
     '''
     def generate(self, source, max_len=50):
 
+        source = source.to(self.device)
         source = source.permute(1, 0)
 
         self.eval()
@@ -396,13 +397,13 @@ class Seq2Seq(nn.Module):
         with torch.no_grad():
             enc_output, hidden = self.encoder(source)
 
-        mask = self.create_mask(source)
+        mask = self.create_mask(source).to(self.device)
 
-        target_token = torch.LongTensor([self.start_idx])
+        target_token = torch.LongTensor([self.start_idx]).to(self.device)
 
         predicted = []
 
-        attention_matrix = torch.zeros(max_len, 1, src_len)
+        attention_matrix = torch.zeros(max_len, 1, src_len).to(self.device)
         
         for i in range(max_len):
             
