@@ -364,24 +364,4 @@ class Trainer:
 
                 pbar.update(1)
 
-                # for i in range(len(inputs.input_ids)):
-
-                #     input_ids = inputs.input_ids[i]
-                #     target_ids = targets.input_ids[i]
-
-                #     output = generate_fun(input_ids.unsqueeze(0))
-
-                #     if type(output) == tuple:
-                #         pred_ids, attention = output
-                #     else:
-                #         pred_ids = output[0]
-
-                #     pred_sentence = self.src_tokenizer.decode(pred_ids, skip_special_tokens=True)
-                #     target_sentence = self.dst_tokenizer.decode(target_ids, skip_special_tokens=True)
-
-                #     result = self.metric.compute(predictions=[pred_sentence], references=[target_sentence])
-                #     score += result["bleu"]
-
-                # score /= len(data_loader)
-
             return score/n*100
