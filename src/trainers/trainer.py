@@ -61,6 +61,7 @@ class Trainer:
             self.config["src_max_length"],
             self.config["dst_max_length"],
             prefix=self.config["prefix"],
+            lang=self.config["lang"]
         )
 
 
