@@ -40,6 +40,9 @@ class Trainer:
             self.model_name = config["model_name"]
         else:
             self.model_name = self.model.__class__.__name__.lower()
+        
+        self.config["lang"] = self.config["lang"] if "lang" in self.config else "ita"
+        self.config["prefix"] = self.config["prefix"] if "prefix" in self.config else False
 
 
     
@@ -52,11 +55,12 @@ class Trainer:
     def get_data_loader(self, batch_size, val_split=0.2, test_split=0.1):
         
         data_set = AnkiDataset(
-            f"{DATASET_PATH}/ita.txt",
+            f"{DATASET_PATH}/{self.config['lang']}.txt",
             self.src_tokenizer,
             self.dst_tokenizer,
             self.config["src_max_length"],
-            self.config["dst_max_length"]
+            self.config["dst_max_length"],
+            prefix=self.config["prefix"],
         )
 
 

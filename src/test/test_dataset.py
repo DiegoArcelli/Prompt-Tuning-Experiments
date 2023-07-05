@@ -2,6 +2,7 @@ import sys
 sys.path.append("./../")
 from nmt_datasets import AnkiDataset
 from transformers import AutoTokenizer
+from trainers.trainer import Trainer
 
 config = {
     "src_max_length": 183,
@@ -28,7 +29,10 @@ data_set = AnkiDataset(
             config["src_max_length"],
             config["dst_max_length"],
             subsample=True,
-            frac=0.1
+            frac=0.01,
+            seed=7
         )
 
-print(len(data_set))
+# trainer = Trainer(model, src_tokenizer, dst_tokenizer, config)
+# trainer.train()
+
