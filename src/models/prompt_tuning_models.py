@@ -439,21 +439,22 @@ class T5PromptTuningMixinSimple:
         '''
         we pass the encoder and decoder embeddings to the forward layer of T5
         '''
-        return super().forward(
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            inputs_embeds=inputs_embeds,
-            decoder_input_ids=decoder_input_ids,
-            decoder_inputs_embeds=decoder_inputs_embeds,
-            decoder_attention_mask=decoder_attention_mask,
-            labels=labels,
-            encoder_outputs=encoder_outputs,
-            past_key_values=past_key_values,
-            use_cache=use_cache,
-            return_dict=return_dict,
-            *args,
-            **kwargs
-        )
+        with torch.no_grad():
+            return super().forward(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                inputs_embeds=inputs_embeds,
+                decoder_input_ids=decoder_input_ids,
+                decoder_inputs_embeds=decoder_inputs_embeds,
+                decoder_attention_mask=decoder_attention_mask,
+                labels=labels,
+                encoder_outputs=encoder_outputs,
+                past_key_values=past_key_values,
+                use_cache=use_cache,
+                return_dict=return_dict,
+                *args,
+                **kwargs
+            )
 
 
     def generate(self, *args, **kwargs):

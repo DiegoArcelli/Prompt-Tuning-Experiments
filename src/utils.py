@@ -35,3 +35,13 @@ def plot_attention_mask(attention_mask, source_tokens, target_tokens):
     plt.imshow(attention_mask, cmap='gray', vmin=0, vmax=1)
     plt.show()
     
+
+
+def test_generation(src_tokenizer, dst_tokenizer, generate_fun, prefix = None, test_sentences = None):
+    if test_sentences == None:
+        test_sentences = ["I like pizza.", "I love my dog.", "How old are you?"]
+    if prefix is not None:
+        test_sentences = [f"{prefix}: {sentence}" for sentence in test_sentences]
+    inputs = src_tokenizer(test_sentences, padding=True, truncation=True, return_tensors="pt")
+    generated = generate_fun(inputs)
+    return dst_tokenizer.batch_decode(generated, skip_special_tokens=True)

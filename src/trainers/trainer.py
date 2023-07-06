@@ -15,7 +15,7 @@ import os
 from trainer_constants import *
 import evaluate
 from tqdm import tqdm
-
+from utils import test_generation
 
 class Trainer:
 
@@ -366,6 +366,11 @@ class Trainer:
                     # print("\n", result)
                     score += result["bleu"]
                     n+=1
+
+                if step % 100 == 0:
+                    print(f"BLEU: {score/n*100}")
+                    gen = test_generation(self.src_tokenizer, self.dst_tokenizer, generate_fun, "translate English to Italian")
+                    print(gen)
 
                 pbar.update(1)
 
