@@ -15,8 +15,8 @@ from utils import count_parameters
 from transformers import MT5ForConditionalGeneration, AutoTokenizer
 import evaluate
 
-tokenizer = AutoTokenizer.from_pretrained("mt5-small")
-model = MT5ForConditionalGeneration.from_pretrained("mt5-small")
+tokenizer = AutoTokenizer.from_pretrained("google/mt5-small")
+model = MT5ForConditionalGeneration.from_pretrained("google/mt5-small")
 
 # training
 # input_ids = tokenizer("The <extra_id_0> walks in <extra_id_1> park", return_tensors="pt").input_ids
@@ -27,7 +27,7 @@ model = MT5ForConditionalGeneration.from_pretrained("mt5-small")
 
 # inference
 input_ids = tokenizer(
-    "summarize: studies have shown that owning a dog is good for you", return_tensors="pt"
+    "translate English to Italian: I like pizza", return_tensors="pt"
 ).input_ids  # Batch size 1
 outputs = model.generate(input_ids)
 print(tokenizer.decode(outputs[0], skip_special_tokens=True))

@@ -13,6 +13,7 @@ from models.prompt_tuning_models import T5PromptTuning
 import time
 from tqdm import tqdm
 import evaluate
+from utils import test_generation
 
 device = "cpu"
 
@@ -118,8 +119,11 @@ generate_fun = lambda x: model.generate(
     # early_stopping=True,
 )
 
-print(len(test_loader))
-score = metric_evaluation(model, test_loader, generate_fun)
-print("\n=========")
-print(score)
-print("=========")
+# print(len(test_loader))
+# score = metric_evaluation(model, test_loader, generate_fun)
+# print("\n=========")
+# print(score)
+# print("=========")
+
+gen = test_generation(tokenizer, tokenizer, generate_fun, None)
+print(gen)
