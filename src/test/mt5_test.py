@@ -1,7 +1,6 @@
 import sys
 sys.path.append("./../")
 sys.path.append("./../trainer/")
-from transformers import GPT2LMHeadModel, GPT2Tokenizer, T5Tokenizer, T5ForConditionalGeneration
 from nmt_datasets import AnkiDataset
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 import torch
@@ -12,23 +11,38 @@ from models.prompt_tuning_models import T5PromptTuning
 import time
 from tqdm import tqdm
 from utils import count_parameters
-from transformers import MT5ForConditionalGeneration, AutoTokenizer
+from transformers import MT5ForConditionalGeneration, AutoTokenizer, T5ForConditionalGeneration
 import evaluate
+from models.nmt_models import MT5ForNMT
 
-tokenizer = AutoTokenizer.from_pretrained("google/mt5-small")
-model = MT5ForConditionalGeneration.from_pretrained("google/mt5-small")
+# tokenizer = AutoTokenizer.from_pretrained("google/mt5-small")
+# model = MT5ForConditionalGeneration.from_pretrained("google/mt5-small")
+# model = MT5ForNMT.from_pretrained("google/mt5-small")
 
-# training
-# input_ids = tokenizer("The <extra_id_0> walks in <extra_id_1> park", return_tensors="pt").input_ids
-# labels = tokenizer("<extra_id_0> cute dog <extra_id_1> the <extra_id_2>", return_tensors="pt").input_ids
-# outputs = model(input_ids=input_ids, labels=labels)
-# loss = outputs.loss
-# logits = outputs.logits
+tokenizer = AutoTokenizer.from_pretrained("t5-small")
+model = T5ForConditionalGeneration.from_pretrained("t5-small")
 
-# inference
-input_ids = tokenizer(
-    "translate English to Italian: I like pizza", return_tensors="pt"
-).input_ids  # Batch size 1
-outputs = model.generate(input_ids)
-print(tokenizer.decode(outputs[0], skip_special_tokens=True))
-# studies have shown that owning a dog is good for you.
+source_sentences = ["translate English to German: I love you", "Mi chiamo diego", "Odio i cani"]
+target_sentences = ["Hello how are you?", "My name is diego", "I hate dogs"]
+# test_sentences = [f"{prefix}: {sentence}" for sentence in test_sentences]
+inputs_src = tokenizer(source_sentences, padding=True, truncation=True, return_tensors="pt")
+inputs_tar = tokenizer(target_sentences, padding=True, truncation=True, return_tensors="pt")
+print(inputs_src.keys())
+# outputs = model(input_ids=inputs_src.input_ids, labels=inputs_tar.input_ids)
+outputs = model(input_ids=inputs_src.input_ids, decoder_input_ids=torch.zeros([3,1]).long())
+
+print(outputs.keys())
+print()
+print(inputs_src.input_ids.shape)
+print(inputs_tar.input_ids.shape)
+print(outputs.logits.shape)
+# print(outputs.loss)
+
+gen = model.generate(
+    input_ids=inputs_src.input_ids[:1, :], 
+    decoder_input_ids=torch.zeros([1, 1]).long(),
+    early_stopping=True,
+)
+print(gen)
+
+print(tokenizer.batch_decode(gen, skip_special_tokens=True))

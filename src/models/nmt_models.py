@@ -1,8 +1,9 @@
-from transformers import T5Model, BartModel
+from transformers import T5Model, MT5Model
 import torch
 from torch import nn
 import torch.nn.functional as F
 from transformers import T5Model
+from transformers.models.mt5.configuration_mt5 import MT5Config
 from transformers.utils import logging
 
 
@@ -170,3 +171,11 @@ class T5ForNMT(NMTModelMixin, T5Model):
 
     def __init__(self, config) -> None:
         super(T5ForNMT, self).__init__(config)
+
+
+class MT5ForNMT(NMTModelMixin, MT5Model):
+
+    def __init__(self, config):
+        super(MT5ForNMT).__init__(config)
+
+

@@ -37,11 +37,16 @@ def plot_attention_mask(attention_mask, source_tokens, target_tokens):
     
 
 
-def test_generation(src_tokenizer, dst_tokenizer, generate_fun, prefix = None, test_sentences = None):
+def test_generation(model, src_tokenizer, dst_tokenizer, prefix = None, test_sentences = None):
     if test_sentences == None:
         test_sentences = ["I like pizza.", "I love my dog.", "How old are you?"]
     if prefix is not None:
         test_sentences = [f"{prefix}: {sentence}" for sentence in test_sentences]
-    inputs = src_tokenizer(test_sentences, padding=True, truncation=True, return_tensors="pt")
-    generated = generate_fun(inputs)
+    inputs = src_tokenizer(test_sentences, padding=True, truncation=True, return_tensors="pt").to(model.device)
+
+    gen_inputs = dict()
+    gen_inputs["input_ids"] = inputs["input_ids"]
+    gen_inputs["attention_mask"] = inputs["attention_mask"]
+
+    generated = model.generate(**gen_inputs)
     return dst_tokenizer.batch_decode(generated, skip_special_tokens=True)

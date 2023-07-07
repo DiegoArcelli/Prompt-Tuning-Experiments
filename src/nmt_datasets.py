@@ -1,5 +1,6 @@
 from torch.utils.data import Dataset
 import random
+from tqdm import tqdm
 
 class AnkiDataset(Dataset):
 
@@ -24,7 +25,8 @@ class AnkiDataset(Dataset):
         self.frac = frac
         self.subsample = subsample
         random.seed(self.seed)
-        self.data = self.get_data(data_path)
+        data = self.get_data(data_path)
+        self.data = self.get_data(data)
         self.prefix = prefix
         self.lang = lang
 
@@ -36,24 +38,8 @@ class AnkiDataset(Dataset):
     def __getitem__(self, index):
         
         src, dst = self.data[index]
-
-        if self.lang == "ita":
-            language = "Italian"
-        elif self.lang == "deu":
-            language = "German"
-
-        src = f"translate English to {language}: {src}" if self.prefix else src
-        
-        src = self.tokenizer_src(src, max_length=self.src_max_length, pad_to_max_length=True, truncation=True, padding="max_length", return_tensors='pt')
-        dst = self.tokenizer_dst(dst, max_length=self.dst_max_length, pad_to_max_length=True, truncation=True, padding="max_length", return_tensors='pt')
-            
-        for key in src.keys():
-            src[key] = src[key][0]
-            dst[key] = dst[key][0]
-
         return (src, dst)
         
-
 
     '''
     Takes in input the path of the datasets and it returnes a list where each element of
@@ -69,3 +55,30 @@ class AnkiDataset(Dataset):
             sentences = random.sample(sentences, k)
 
         return sentences
+    
+
+
+    def tokenize_data(self, data):
+
+        if self.lang == "ita":
+            language = "Italian"
+        elif self.lang == "deu":
+            language = "German"
+
+        tokenized_data = []
+        print("Tokenizing the dataset")
+        with tqdm(total=len(data)) as pbar:
+            for (src, dst) in self.data:
+
+                src = f"translate English to {language}: {src}" if self.prefix else src
+                src = self.tokenizer_src(src, max_length=self.src_max_length, pad_to_max_length=True, truncation=True, padding="max_length", return_tensors='pt')
+                dst = self.tokenizer_dst(dst, max_length=self.dst_max_length, pad_to_max_length=True, truncation=True, padding="max_length", return_tensors='pt')
+                
+                for key in src.keys():
+                    src[key] = src[key][0]
+                    dst[key] = dst[key][0]
+
+                tokenized_data.append((src, dst))
+                pbar.update(1)
+
+        return tokenized_data

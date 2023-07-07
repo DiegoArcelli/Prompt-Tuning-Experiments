@@ -236,6 +236,10 @@ class Trainer:
                 if (step+1) % 50 == 0:
                     print(f"\nEpoch {epoch}, samples {step+1}/{n} train loss: {total_loss/(step+1)}")
 
+                if (step+1) % 100 == 0:
+                    gen = test_generation(self.model, self.src_tokenizer, self.dst_tokenizer, "translate English to Italian")
+                    print(gen)
+
                 pbar.update(1)
 
                 
@@ -273,7 +277,7 @@ class Trainer:
                 total_loss += loss.item()
 
                 if (step+1) % 50 == 0:
-                    print(f"\nEpoch {epoch}, samples {step+1}/{n} train loss: {total_loss/(step+1)}")
+                    print(f"\nEpoch {epoch}, samples {step+1}/{n} validation loss: {total_loss/(step+1)}")
 
                 pbar.update(1)
 
@@ -369,8 +373,6 @@ class Trainer:
 
                 if step % 100 == 0:
                     print(f"BLEU: {score/n*100}")
-                    gen = test_generation(self.src_tokenizer, self.dst_tokenizer, generate_fun, "translate English to Italian")
-                    print(gen)
 
                 pbar.update(1)
 
