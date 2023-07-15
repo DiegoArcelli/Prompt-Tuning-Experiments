@@ -1,9 +1,5 @@
-import sys
-sys.path.append("./../")
 from nmt_datasets import AnkiDataset
 from transformers import AutoTokenizer
-from trainers.trainer import Trainer
-
 config = {
     "src_max_length": 183,
     "dst_max_length": 208,
@@ -20,17 +16,16 @@ config = {
 src_tokenizer = AutoTokenizer.from_pretrained("dbmdz/bert-base-italian-cased")
 dst_tokenizer = AutoTokenizer.from_pretrained('bert-base-cased')
 
-
-
 data_set = AnkiDataset(
-            f"../../dataset/ita.txt",
+            f"../dataset/ita.txt",
             src_tokenizer,
             dst_tokenizer,
             config["src_max_length"],
             config["dst_max_length"],
             subsample=True,
             frac=0.01,
-            seed=7
+            seed=7,
+            lang="ita"
         )
 
 print(data_set)

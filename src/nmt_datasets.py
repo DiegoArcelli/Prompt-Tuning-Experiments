@@ -24,11 +24,12 @@ class AnkiDataset(Dataset):
         self.seed = seed
         self.frac = frac
         self.subsample = subsample
-        random.seed(self.seed)
-        data = self.get_data(data_path)
-        self.data = self.get_data(data)
         self.prefix = prefix
         self.lang = lang
+        random.seed(self.seed)
+        data = self.get_data(data_path)
+        self.data = self.tokenize_data(data)
+
 
 
     def __len__(self):
@@ -68,7 +69,7 @@ class AnkiDataset(Dataset):
         tokenized_data = []
         print("Tokenizing the dataset")
         with tqdm(total=len(data)) as pbar:
-            for (src, dst) in self.data:
+            for (src, dst) in data:
 
                 src = f"translate English to {language}: {src}" if self.prefix else src
                 src = self.tokenizer_src(src, max_length=self.src_max_length, pad_to_max_length=True, truncation=True, padding="max_length", return_tensors='pt')
