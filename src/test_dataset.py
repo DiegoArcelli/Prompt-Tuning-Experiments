@@ -1,4 +1,4 @@
-from nmt_datasets import AnkiDataset
+from nmt_datasets import AnkiDatasetFactory
 from transformers import AutoTokenizer
 config = {
     "src_max_length": 183,
@@ -16,7 +16,7 @@ config = {
 src_tokenizer = AutoTokenizer.from_pretrained("dbmdz/bert-base-italian-cased")
 dst_tokenizer = AutoTokenizer.from_pretrained('bert-base-cased')
 
-data_set = AnkiDataset(
+data_set = AnkiDatasetFactory(
             f"../dataset/ita.txt",
             src_tokenizer,
             dst_tokenizer,
@@ -28,7 +28,6 @@ data_set = AnkiDataset(
             lang="ita"
         )
 
-print(data_set)
 # trainer = Trainer(model, src_tokenizer, dst_tokenizer, config)
 # trainer.train()
 

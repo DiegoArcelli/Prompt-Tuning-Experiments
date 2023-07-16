@@ -1,8 +1,10 @@
-from torch.utils.data import Dataset
 import random
 from tqdm import tqdm
+from torch.utils.data import random_split
+from datasets import Dataset, DatasetDict
 
-class AnkiDataset(Dataset):
+
+class AnkiDatasetFactory:
 
     def __init__(self,
                  data_path,
@@ -10,6 +12,7 @@ class AnkiDataset(Dataset):
                  tokenizer_dst,
                  src_max_length,
                  dst_max_length,
+                 splits=(0.8, 0.1, 0.1),
                  prefix=False,
                  subsample=False,
                  frac=1.0,
@@ -17,6 +20,9 @@ class AnkiDataset(Dataset):
                  lang="ita"
                 ) -> None:
         super().__init__()
+
+        assert sum(splits) == 1.0, "Splits don't sum up to 1"
+
         self.tokenizer_src = tokenizer_src
         self.tokenizer_dst = tokenizer_dst
         self.src_max_length = src_max_length
@@ -26,21 +32,19 @@ class AnkiDataset(Dataset):
         self.subsample = subsample
         self.prefix = prefix
         self.lang = lang
+        train_split, val_split, test_split = splits
+
         random.seed(self.seed)
         data = self.get_data(data_path)
-        self.data = self.tokenize_data(data)
+        data = self.tokenize_data(data)
+        data = Dataset.from_list(data)
 
 
-
-    def __len__(self):
-        return len(self.data)
-    
-
-    def __getitem__(self, index):
-        
-        src, dst = self.data[index]
-        return (src, dst)
-        
+        train_test_data = data.train_test_split(test_size=test_split, seed=self.seed)
+        train_val_data = train_test_data["train"].train_test_split(test_size = val_split, seed=self.seed)
+        del train_val_data["train"]
+        print(train_test_data)
+        print(train_val_data)
 
     '''
     Takes in input the path of the datasets and it returnes a list where each element of
@@ -58,7 +62,6 @@ class AnkiDataset(Dataset):
         return sentences
     
 
-
     def tokenize_data(self, data):
 
         if self.lang == "ita":
@@ -66,20 +69,31 @@ class AnkiDataset(Dataset):
         elif self.lang == "deu":
             language = "German"
 
-        tokenized_data = []
+        records = []
         print("Tokenizing the dataset")
         with tqdm(total=len(data)) as pbar:
-            for (src, dst) in data:
+            for idx, (src, dst) in enumerate(data):
+                record = {}
 
-                src = f"translate English to {language}: {src}" if self.prefix else src
-                src = self.tokenizer_src(src, max_length=self.src_max_length, pad_to_max_length=True, truncation=True, padding="max_length", return_tensors='pt')
-                dst = self.tokenizer_dst(dst, max_length=self.dst_max_length, pad_to_max_length=True, truncation=True, padding="max_length", return_tensors='pt')
+                pre_src = f"translate English to {language}: {src}" if self.prefix else src
+                src_tokenized = self.tokenizer_src(pre_src, max_length=self.src_max_length, truncation=True, return_tensors='pt')
+                dst_tokenized = self.tokenizer_dst(dst, max_length=self.dst_max_length, truncation=True, return_tensors='pt')
                 
-                for key in src.keys():
-                    src[key] = src[key][0]
-                    dst[key] = dst[key][0]
+                for key in src_tokenized.keys():
+                    src_tokenized[key] = src_tokenized[key][0]
+                    dst_tokenized[key] = dst_tokenized[key][0]
 
-                tokenized_data.append((src, dst))
+                record["id"] = idx
+                record["translation"] = {
+                    'en': src,
+                    'it': dst
+                }
+                record["input_ids"] = src_tokenized.input_ids
+                record["attention_mask"] = src_tokenized.attention_mask
+                record["labels"] = dst_tokenized.input_ids
+
+
+                records.append(record)
                 pbar.update(1)
 
-        return tokenized_data
+        return records
