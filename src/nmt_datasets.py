@@ -12,7 +12,8 @@ class AnkiDatasetFactory:
                  tokenizer_dst,
                  src_max_length,
                  dst_max_length,
-                 splits=(0.8, 0.1, 0.1),
+                 test_split=0.1,
+                 val_split=0.1,
                  prefix=False,
                  subsample=False,
                  frac=1.0,
@@ -20,8 +21,6 @@ class AnkiDatasetFactory:
                  lang="ita"
                 ) -> None:
         super().__init__()
-
-        assert sum(splits) == 1.0, "Splits don't sum up to 1"
 
         self.tokenizer_src = tokenizer_src
         self.tokenizer_dst = tokenizer_dst
@@ -32,7 +31,6 @@ class AnkiDatasetFactory:
         self.subsample = subsample
         self.prefix = prefix
         self.lang = lang
-        train_split, val_split, test_split = splits
 
         random.seed(self.seed)
         data = self.get_data(data_path)
@@ -42,10 +40,9 @@ class AnkiDatasetFactory:
 
         train_test_data = data.train_test_split(test_size=test_split, seed=self.seed)
         train_val_data = train_test_data["train"].train_test_split(test_size = val_split, seed=self.seed)
-        del train_val_data["train"]
-        print(train_test_data)
-        print(train_val_data)
-
+        del train_test_data["train"]
+        self.train_val_data = train_val_data
+        self.test_data = train_test_data
     '''
     Takes in input the path of the datasets and it returnes a list where each element of
     the list is a list of the elment containing the english and italian sentence

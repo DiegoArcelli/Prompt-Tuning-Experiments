@@ -28,6 +28,9 @@ data_set = AnkiDatasetFactory(
             lang="ita"
         )
 
+print(data_set.train_val_data)
+print(data_set.test_data)
+
 # trainer = Trainer(model, src_tokenizer, dst_tokenizer, config)
 # trainer.train()
 
