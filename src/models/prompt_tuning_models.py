@@ -1,4 +1,4 @@
-from transformers import T5Model, BartModel, T5ForConditionalGeneration
+from transformers import T5ForConditionalGeneration, MT5ForConditionalGeneration
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -258,6 +258,10 @@ class T5PromptTuning(T5PromptTuningMixin, T5ForConditionalGeneration):
         super(T5PromptTuning, self).__init__(config)
 
 
+class MT5PromptTuning(T5PromptTuningMixin, MT5ForConditionalGeneration):
+
+    def __init__(self, config) -> None:
+        super(MT5PromptTuning, self).__init__(config)
 
 # '''
 # super class that defines the behavior of the T5 model with the soft-prompts
