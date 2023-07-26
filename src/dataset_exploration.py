@@ -10,7 +10,7 @@ sentences_dst = [x for [_, x] in sentences]
 # src_tokenizer = AutoTokenizer.from_pretrained("dbmdz/bert-base-italian-cased")
 # dst_tokenizer = AutoTokenizer.from_pretrained('bert-base-cased')
 src_tokenizer = AutoTokenizer.from_pretrained("t5-small")
-dst_tokenizer = AutoTokenizer.from_pretrained("dbmdz/bert-base-italian-cased")
+dst_tokenizer = AutoTokenizer.from_pretrained("google/mt5-small")
 
 src = max([len(src_tokenizer(f"translate English to Italian: {x}").input_ids) for x in sentences_src])
 dst = max([len(dst_tokenizer(x).input_ids) for x in sentences_dst])
