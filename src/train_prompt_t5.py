@@ -4,7 +4,7 @@ from transformers import AutoTokenizer
 import evaluate
 import numpy as np
 from transformers import DataCollatorForSeq2Seq
-from models.prompt_tuning_models import T5PromptTuning
+from models.prompt_tuning_models import T5PromptTuningSimple
 from transformers.utils import logging
 from torch.nn import Linear
 import torch
@@ -63,14 +63,12 @@ dst_tokenizer = AutoTokenizer.from_pretrained("dbmdz/bert-base-italian-cased")
 
 
 # model = T5ForNMT.from_pretrained("t5-small", hidden_size=512, voc_size=config["dst_vocab_size"])
-model = T5PromptTuning.from_pretrained(
+model = T5PromptTuningSimple.from_pretrained(
     "t5-small",
     encoder_soft_prompt_path = None,
     decoder_soft_prompt_path = None,
     encoder_n_tokens = 40,
     decoder_n_tokens = 40,
-    encoder_hidden_dim=64,
-    decoder_hidden_dim=64,
     device=device
 )
 
@@ -94,7 +92,7 @@ training_args = Seq2SeqTrainingArguments(
     output_dir="output/",
     evaluation_strategy="epoch",
     save_strategy="epoch",
-    learning_rate=2e-5,
+    learning_rate=0.15,
     per_device_train_batch_size=4,
     per_device_eval_batch_size=4,
     weight_decay=0.01,
@@ -104,7 +102,7 @@ training_args = Seq2SeqTrainingArguments(
     fp16=True,
     push_to_hub=False,
     logging_strategy="steps",
-    logging_steps=10,
+    logging_steps=100,
     logging_dir="logs/",
     #disable_tqdm=True
 )

@@ -85,7 +85,7 @@ data_set = AnkiDatasetFactory(
             config["src_max_length"],
             config["dst_max_length"],
             subsample=True,
-            frac=0.001,
+            frac=1,
             seed=7,
             lang="ita"
         )
@@ -94,17 +94,17 @@ training_args = Seq2SeqTrainingArguments(
     output_dir="output/",
     evaluation_strategy="epoch",
     save_strategy="epoch",
-    learning_rate=2e-5,
-    per_device_train_batch_size=4,
-    per_device_eval_batch_size=4,
+    learning_rate=0.15,
+    per_device_train_batch_size=16,
+    per_device_eval_batch_size=16,
     weight_decay=0.01,
     save_total_limit=3,
     num_train_epochs=2,
     predict_with_generate=True,
-    fp16=True,
+    fp16=False,
     push_to_hub=False,
     logging_strategy="steps",
-    logging_steps=10,
+    logging_steps=100,
     logging_dir="logs/",
     #disable_tqdm=True
 )
