@@ -109,11 +109,11 @@ class T5PromptTuningMixin:
 
     def concatenate_encoder_soft_prompts(self, input_ids):
         inputs_emb = self.encoder_soft_prompt(self.encoder_input_tokens)
-        soft_prompts = self.encoder_emb_generator(inputs_emb)
+        soft_prompts = self.encoder_emb_generator(inputs_emb).to(self.device)
 
-        embeddings = self.encoder.embed_tokens(input_ids)
+        embeddings = self.encoder.embed_tokens(input_ids).to(self.device)
 
-        soft_prompts = soft_prompts.repeat(embeddings.size(0), 1, 1)
+        soft_prompts = soft_prompts.repeat(embeddings.size(0), 1, 1).to(self.device)
 
         inputs_concat = torch.cat([soft_prompts, embeddings], dim=1)
         return inputs_concat
@@ -121,11 +121,11 @@ class T5PromptTuningMixin:
 
     def concatenate_decoder_soft_prompts(self, input_ids):
         inputs_emb = self.decoder_soft_prompt(self.decoder_input_tokens)
-        soft_prompts = self.decoder_emb_generator(inputs_emb)
+        soft_prompts = self.decoder_emb_generator(inputs_emb).to(self.device)
         
-        embeddings = self.decoder.embed_tokens(input_ids)
+        embeddings = self.decoder.embed_tokens(input_ids).to(self.device)
 
-        soft_prompts = soft_prompts.repeat(embeddings.size(0), 1, 1)
+        soft_prompts = soft_prompts.repeat(embeddings.size(0), 1, 1).to(self.device)
 
         inputs_concat = torch.cat([soft_prompts, embeddings], dim=1)
         return inputs_concat

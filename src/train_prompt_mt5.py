@@ -4,7 +4,7 @@ from transformers import AutoTokenizer
 import evaluate
 import numpy as np
 from transformers import DataCollatorForSeq2Seq
-from models.prompt_tuning_models import T5PromptTuning, MT5PromptTuning
+from models.prompt_tuning_models import T5PromptTuning, MT5PromptTuningSimple
 from transformers.utils import logging
 from torch.nn import Linear
 import torch
@@ -63,14 +63,12 @@ dst_tokenizer = AutoTokenizer.from_pretrained("google/mt5-small")
 
 
 # model = T5ForNMT.from_pretrained("t5-small", hidden_size=512, voc_size=config["dst_vocab_size"])
-model = MT5PromptTuning.from_pretrained(
+model = MT5PromptTuningSimple.from_pretrained(
     "google/mt5-small",
     encoder_soft_prompt_path = None,
     decoder_soft_prompt_path = None,
     encoder_n_tokens = 40,
     decoder_n_tokens = 40,
-    encoder_hidden_dim=64,
-    decoder_hidden_dim=64,
     device=device
 )
 
