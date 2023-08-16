@@ -1,3 +1,5 @@
+import sys
+sys.path.append("./models/")
 from transformers import AutoModelForSeq2SeqLM, Seq2SeqTrainingArguments, Seq2SeqTrainer
 from nmt_datasets import AnkiDatasetFactory
 from transformers import AutoTokenizer
