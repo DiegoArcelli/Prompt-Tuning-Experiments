@@ -410,44 +410,44 @@ class T5PromptTuningMixinSimple:
         **kwargs
     ):
         
-        if input_ids is not None:
-            '''
-            if input_ids are passed their embedding is concatenated to the
-            encoder soft prompts to generate input_embeds, a tensor
-            of size (batch_size, enc_n_tokens + seq_len, enc_hidden_dim)
-            '''
-            inputs_embeds = self.concatenate_encoder_soft_prompts(input_ids)
-            input_ids = None
+        # if input_ids is not None:
+        #     '''
+        #     if input_ids are passed their embedding is concatenated to the
+        #     encoder soft prompts to generate input_embeds, a tensor
+        #     of size (batch_size, enc_n_tokens + seq_len, enc_hidden_dim)
+        #     '''
+        #     inputs_embeds = self.concatenate_encoder_soft_prompts(input_ids)
+        #     input_ids = None
 
-        if decoder_input_ids is not None:
-            '''
-            if decoder_input_ids are passed thier embedding is concatenated to the
-            decoder soft prompts to generate decoder_input_embeds, a tensor
-            of size (batch_size, dec_n_tokens + dst_len, dec_hidden_dim)
-            '''
-            decoder_inputs_embeds = self.concatenate_decoder_soft_prompts(decoder_input_ids)
-            decoder_input_ids = None
+        # if decoder_input_ids is not None:
+        #     '''
+        #     if decoder_input_ids are passed thier embedding is concatenated to the
+        #     decoder soft prompts to generate decoder_input_embeds, a tensor
+        #     of size (batch_size, dec_n_tokens + dst_len, dec_hidden_dim)
+        #     '''
+        #     decoder_inputs_embeds = self.concatenate_decoder_soft_prompts(decoder_input_ids)
+        #     decoder_input_ids = None
 
-        if attention_mask is not None and inputs_embeds is not None:
-            '''
-            if attention_mask is passed it is extended to include also the encoder
-            soft prompts, generating a tensor of size (batch_size, enc_n_tokens + seq_len)
-            '''
-            attention_mask = self.extend_attention_mask(attention_mask)
+        # if attention_mask is not None and inputs_embeds is not None:
+        #     '''
+        #     if attention_mask is passed it is extended to include also the encoder
+        #     soft prompts, generating a tensor of size (batch_size, enc_n_tokens + seq_len)
+        #     '''
+        #     attention_mask = self.extend_attention_mask(attention_mask)
 
-        if decoder_attention_mask is not None:
-            '''
-            if decoder_attention_mask is passed it is extended to include also the decoder
-            soft prompts, generating a tensor of size (batch_size, dec_n_tokens + dst_len)
-            '''
-            decoder_attention_mask = self.extend_attention_mask(decoder_attention_mask)
+        # if decoder_attention_mask is not None:
+        #     '''
+        #     if decoder_attention_mask is passed it is extended to include also the decoder
+        #     soft prompts, generating a tensor of size (batch_size, dec_n_tokens + dst_len)
+        #     '''
+        #     decoder_attention_mask = self.extend_attention_mask(decoder_attention_mask)
 
 
-        if labels is not None:
-            '''
-            if labels is passed then it is extended to include the also the embeddings
-            '''
-            labels = self.extend_labels(labels)
+        # if labels is not None:
+        #     '''
+        #     if labels is passed then it is extended to include the also the embeddings
+        #     '''
+        #     labels = self.extend_labels(labels)
             
         '''
         we pass the encoder and decoder embeddings to the forward layer of T5
@@ -465,6 +465,8 @@ class T5PromptTuningMixinSimple:
                 past_key_values=past_key_values,
                 use_cache=use_cache,
                 return_dict=return_dict,
+                encoder_prompt=self.encoder_soft_prompt,
+                decoder_prompt=self.decoder_soft_prompt,
                 *args,
                 **kwargs
             )
@@ -472,10 +474,12 @@ class T5PromptTuningMixinSimple:
 
     def generate(self, *args, **kwargs):
 
-        kwargs['inputs_embeds'] = self.concatenate_encoder_soft_prompts(kwargs['input_ids']).to(self.device)
-        kwargs['attention_mask']=self.extend_attention_mask(torch.ones([1,kwargs['inputs_embeds'].shape[1]-self.n_tokens]).long()).to(self.device)
+        # kwargs['inputs_embeds'] = self.concatenate_encoder_soft_prompts(kwargs['input_ids']).to(self.device)
+        # kwargs['attention_mask']=self.extend_attention_mask(torch.ones([1,kwargs['inputs_embeds'].shape[1]-self.n_tokens]).long()).to(self.device)
 
-        del kwargs['input_ids']
+        # del kwargs['input_ids']
+        kwargs["encoder_prompt"] = self.encoder_soft_prompt
+        kwargs["decoder_prompt"] = self.decoder_soft_prompt
 
         return super().generate(*args, **kwargs)
 

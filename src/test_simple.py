@@ -1,23 +1,32 @@
-from models.prompt_tuning_models import T5PromptTuningSimple
+from models.prompt_tuning_models import MT5PromptTuningSimple
 from utils import count_parameters
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, MT5ForConditionalGeneration
 import torch
 
-model = T5PromptTuningSimple.from_pretrained("t5-small", None, None, 40, 40)
-print(model)
+model = MT5PromptTuningSimple.from_pretrained("google/mt5-small", None, None, 10, 10)
 
-tokenizer = AutoTokenizer.from_pretrained("t5-small")
+tokenizer = AutoTokenizer.from_pretrained("google/mt5-small")
 
-inputs = tokenizer(["Hello, my dog is cute", "I hate black cats"], padding=True, truncation=True, return_tensors="pt")
-targets = tokenizer(["Ciao, il mio cane è carino", "Odio i gatti neri"], padding=True, truncation=True, return_tensors="pt")
+prefix = "translate English to German"
 
-print(inputs.input_ids.shape, targets.input_ids.shape)
+# prompt = "translate German to English: Würde ich wenn ich gut darin wäre"
+prompt = [f"{prefix}: I don't speak german.", f"{prefix}: You are really bad.", f"{prefix}: Blue moon you are no longer alone"]
 
-out = model(input_ids=inputs.input_ids, decoder_input_ids = targets.input_ids)
-print(out.keys())
-logits = out.logits
-print(logits.shape)
+# Tokenize prompt
+encoded_prompt = tokenizer(prompt, max_length=20, pad_to_max_length=True, truncation=True, padding="max_length", return_tensors='pt')
+print(encoded_prompt)
+output_sequences = model.generate(
+    **encoded_prompt,
+    # max_length=5
+    # decoder_input_ids=torch.zeros([1,1]).long(), 
+    # max_length=200,
+    # num_beams=5,
+    # early_stopping=True,
+)
+# # Decode generated text
+generated_text = tokenizer.decode(output_sequences[0], clean_up_tokenization_spaces=True)
+print(generated_text)
 
-for n, p in model.named_parameters():
-    if p.requires_grad:
-         print(n, p.shape)
+# for n, p in model.named_parameters():
+#     if p.requires_grad:
+#          print(n, p.shape)
