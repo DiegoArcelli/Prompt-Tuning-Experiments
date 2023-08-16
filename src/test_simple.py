@@ -1,4 +1,6 @@
-from models.prompt_tuning_models import MT5PromptTuningSimple
+import sys
+sys.path.append("./models/")
+from models.prompt_tuning_models_multiple import MT5PromptTuningSimple
 from utils import count_parameters
 from transformers import AutoTokenizer, MT5ForConditionalGeneration
 import torch
@@ -17,10 +19,10 @@ encoded_prompt = tokenizer(prompt, max_length=20, pad_to_max_length=True, trunca
 print(encoded_prompt)
 output_sequences = model.generate(
     **encoded_prompt,
-    # max_length=5
+    max_length=10,
     # decoder_input_ids=torch.zeros([1,1]).long(), 
     # max_length=200,
-    # num_beams=5,
+    # num_beams=5
     # early_stopping=True,
 )
 # # Decode generated text

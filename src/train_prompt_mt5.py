@@ -4,7 +4,7 @@ from transformers import AutoTokenizer
 import evaluate
 import numpy as np
 from transformers import DataCollatorForSeq2Seq
-from models.prompt_tuning_models import T5PromptTuning, MT5PromptTuningSimple
+from models.prompt_tuning_models_multiple import MT5PromptTuningSimple
 from transformers.utils import logging
 from torch.nn import Linear
 import torch

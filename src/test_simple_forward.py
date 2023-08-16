@@ -1,6 +1,8 @@
-from models.prompt_tuning_models import MT5PromptTuningSimple
+import sys
+sys.path.append("./models/")
+from models.prompt_tuning_models_multiple import MT5PromptTuningSimple
 from utils import count_parameters
-from transformers import AutoTokenizer, MT5ForConditionalGeneration
+from transformers import AutoTokenizer
 import torch
 
 model = MT5PromptTuningSimple.from_pretrained("google/mt5-small", None, None, 10, 10)
