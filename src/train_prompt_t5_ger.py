@@ -79,16 +79,16 @@ data_collator = DataCollatorForSeq2Seq(tokenizer=dst_tokenizer, model="t5-small"
 
 
 data_set = AnkiDatasetFactory(
-            f"../dataset/deu.txt",
-            src_tokenizer,
-            dst_tokenizer,
-            config["src_max_length"],
-            config["dst_max_length"],
-            subsample=True,
-            frac=1.0,
-            seed=7,
-            lang="deu"
-        )
+    f"../dataset/deu.txt",
+    src_tokenizer,
+    dst_tokenizer,
+    config["src_max_length"],
+    config["dst_max_length"],
+    subsample=True,
+    frac=1.0,
+    seed=7,
+    lang="deu"
+)
 
 training_args = Seq2SeqTrainingArguments(
     output_dir="output/",
