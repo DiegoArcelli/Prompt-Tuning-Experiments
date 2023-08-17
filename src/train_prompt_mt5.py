@@ -14,7 +14,7 @@ import torch
 
 # logging.set_verbosity_info()
 # logger = logging.get_logger("transformers")
-# logger.info("INFO")
+# logger.info("INF(data_set.test_data["test"])
 # logger.warning("WARN")
 
 config = {
@@ -29,7 +29,8 @@ config = {
     "seed": 7,
 }
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = "cpu"
 
 metric = evaluate.load("sacrebleu")
 
@@ -69,10 +70,12 @@ model = MT5PromptTuningSimple.from_pretrained(
     "google/mt5-small",
     encoder_soft_prompt_path = None,
     decoder_soft_prompt_path = None,
-    encoder_n_tokens = 40,
-    decoder_n_tokens = 40,
+    encoder_n_tokens = 20,
+    decoder_n_tokens = 20,
     device=device
 )
+
+model = model.to(device)
 
 data_collator = DataCollatorForSeq2Seq(tokenizer=dst_tokenizer, model="google/mt5-small")
 # model.lm_head = Linear(in_features=512, out_features=31102, bias=False)
@@ -85,7 +88,7 @@ data_set = AnkiDatasetFactory(
             config["src_max_length"],
             config["dst_max_length"],
             subsample=True,
-            frac=1,
+            frac=1.0,
             seed=7,
             lang="ita"
         )
@@ -95,8 +98,8 @@ training_args = Seq2SeqTrainingArguments(
     evaluation_strategy="epoch",
     save_strategy="epoch",
     learning_rate=0.15,
-    per_device_train_batch_size=16,
-    per_device_eval_batch_size=16,
+    per_device_train_batch_size=2,
+    per_device_eval_batch_size=2,
     weight_decay=0.01,
     save_total_limit=3,
     num_train_epochs=2,
