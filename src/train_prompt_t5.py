@@ -1,14 +1,17 @@
+import sys
+sys.path.append("./models/")
 from transformers import AutoModelForSeq2SeqLM, Seq2SeqTrainingArguments, Seq2SeqTrainer
 from nmt_datasets import AnkiDatasetFactory
 from transformers import AutoTokenizer
 import evaluate
 import numpy as np
 from transformers import DataCollatorForSeq2Seq
+# from models.prompt_tuning_models import T5PromptTuning, T5PromptTuningSimple
 from models.prompt_tuning_models import T5PromptTuningSimple
 from transformers.utils import logging
 from torch.nn import Linear
 import torch
-
+from utils import count_parameters
 
 # logging.set_verbosity_info()
 # logger = logging.get_logger("transformers")
@@ -67,10 +70,14 @@ model = T5PromptTuningSimple.from_pretrained(
     "t5-small",
     encoder_soft_prompt_path = None,
     decoder_soft_prompt_path = None,
-    encoder_n_tokens = 40,
-    decoder_n_tokens = 40,
+    encoder_n_tokens = 20,
+    decoder_n_tokens = 20,
+    # encoder_hidden_dim = 512,
+    # decoder_hidden_dim = 512,
     device=device
 )
+
+count_parameters(model)
 
 data_collator = DataCollatorForSeq2Seq(tokenizer=dst_tokenizer, model="t5-small")
 # model.lm_head = Linear(in_features=512, out_features=31102, bias=False)
@@ -93,8 +100,8 @@ training_args = Seq2SeqTrainingArguments(
     evaluation_strategy="epoch",
     save_strategy="epoch",
     learning_rate=0.15,
-    per_device_train_batch_size=4,
-    per_device_eval_batch_size=4,
+    per_device_train_batch_size=2,
+    per_device_eval_batch_size=2,
     weight_decay=0.01,
     save_total_limit=3,
     num_train_epochs=2,

@@ -29,8 +29,7 @@ config = {
     "seed": 7,
 }
 
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-device = "cpu"
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 metric = evaluate.load("sacrebleu")
 
@@ -88,7 +87,7 @@ data_set = AnkiDatasetFactory(
             config["src_max_length"],
             config["dst_max_length"],
             subsample=True,
-            frac=1.0,
+            frac=0.001,
             seed=7,
             lang="ita"
         )

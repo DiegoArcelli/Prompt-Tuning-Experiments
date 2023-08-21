@@ -1,4 +1,4 @@
-from transformers import T5Model, BartModel, T5ForConditionalGeneration
+from transformers import T5ForConditionalGeneration, MT5ForConditionalGeneration
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -85,7 +85,9 @@ class T5PromptTuningMixin:
 
     def initialize_encoder_soft_prompts(self, n_tokens, hidden_dim, random_range=0.5):
         self.n_tokens = n_tokens
-        self.encoder_soft_prompt = nn.Embedding(n_tokens, hidden_dim)
+        #self.encoder_soft_prompt = nn.Embedding(n_tokens, hidden_dim)
+        self.encoder_soft_prompt = nn.Parameter(torch.zeros(n_tokens, hidden_dim))
+        nn.init.uniform_(self.encoder_soft_prompt)
         # init_prompt_value = torch.FloatTensor(2, 10).uniform_(-random_range, random_range)
         # self.encoder_soft_prompt.weight = nn.parameter.Parameter(init_prompt_value)
 
@@ -97,7 +99,9 @@ class T5PromptTuningMixin:
 
     def initialize_decoder_soft_prompts(self, n_tokens, hidden_dim, random_range=0.5):
         self.n_tokens = n_tokens
-        self.decoder_soft_prompt = nn.Embedding(n_tokens, hidden_dim)
+        # self.decoder_soft_prompt = nn.Embedding(n_tokens, hidden_dim)
+        self.decoder_soft_prompt = nn.Parameter(torch.zeros(n_tokens, hidden_dim))
+        nn.init.uniform_(self.decoder_soft_prompt)
         # init_prompt_value = torch.FloatTensor(2, 10).uniform_(-random_range, random_range)
         # self.decoder_soft_prompt.weight = nn.parameter.Parameter(init_prompt_value)
 
@@ -108,8 +112,8 @@ class T5PromptTuningMixin:
 
 
     def concatenate_encoder_soft_prompts(self, input_ids):
-        inputs_emb = self.encoder_soft_prompt(self.encoder_input_tokens)
-        soft_prompts = self.encoder_emb_generator(inputs_emb)
+        # inputs_emb = self.encoder_soft_prompt(self.encoder_input_tokens)
+        soft_prompts = self.encoder_emb_generator(self.encoder_soft_prompt)
 
         embeddings = self.encoder.embed_tokens(input_ids)
 
@@ -120,8 +124,8 @@ class T5PromptTuningMixin:
     
 
     def concatenate_decoder_soft_prompts(self, input_ids):
-        inputs_emb = self.decoder_soft_prompt(self.decoder_input_tokens)
-        soft_prompts = self.decoder_emb_generator(inputs_emb)
+        # inputs_emb = self.decoder_soft_prompt(self.decoder_input_tokens)
+        soft_prompts = self.decoder_emb_generator(self.decoder_soft_prompt)
         
         embeddings = self.decoder.embed_tokens(input_ids)
 
@@ -132,10 +136,12 @@ class T5PromptTuningMixin:
 
 
     def extend_attention_mask(self, attention_mask):
+        attention_mask = attention_mask.to(self.device)
         batch_size = attention_mask.shape[0]
-        soft_prompts_mask = torch.full((batch_size, self.n_tokens), 1, dtype=torch.long)
-        extended_mask = torch.concat([soft_prompts_mask, attention_mask], dim=1)
+        soft_prompts_mask = torch.full((batch_size, self.n_tokens), 1, dtype=torch.long).to(self.device)
+        extended_mask = torch.concat([soft_prompts_mask, attention_mask], dim=1).to(self.device)
         return extended_mask
+
     
 
     def extend_labels(self, labels, ignore_index=-100):
@@ -235,11 +241,13 @@ class T5PromptTuningMixin:
 
 
     def generate(self, *args, **kwargs):
-
-        kwargs['inputs_embeds'] = self.concatenate_encoder_soft_prompts(kwargs['input_ids']).to(self.device)
+        if 'input_ids' in args:
+            kwargs['inputs_embeds'] = self.concatenate_encoder_soft_prompts(kwargs['input_ids']).to(self.device)
+            del kwargs['input_ids'] 
+        else:
+            kwargs['inputs_embeds'] = self.concatenate_encoder_soft_prompts(args[0]).to(self.device)
+            args = args[1:]
         kwargs['attention_mask']=self.extend_attention_mask(torch.ones([1,kwargs['inputs_embeds'].shape[1]-self.n_tokens]).long()).to(self.device)
-
-        del kwargs['input_ids']
 
         return super().generate(*args, **kwargs)
 
@@ -252,8 +260,10 @@ class T5PromptTuning(T5PromptTuningMixin, T5ForConditionalGeneration):
     def __init__(self, config) -> None:
         super(T5PromptTuning, self).__init__(config)
 
+class MT5PromptTuning(T5PromptTuningMixin, MT5ForConditionalGeneration):
 
-
+    def __init__(self, config) -> None:
+        super(MT5PromptTuning, self).__init__(config)
 '''
 super class that defines the behavior of the T5 model with the soft-prompts
 '''
@@ -310,9 +320,11 @@ class T5PromptTuningMixinSimple:
         return model
     
 
-    def initialize_encoder_soft_prompts(self, n_tokens, random_range=0.5):
+    def initialize_encoder_soft_prompts(self, n_tokens, hidden_dim, random_range=0.5):
         self.n_tokens = n_tokens
-        self.encoder_soft_prompt = nn.Embedding(n_tokens, self.config.d_model)
+        #self.encoder_soft_prompt = nn.Embedding(n_tokens, hidden_dim)
+        self.encoder_soft_prompt = nn.Parameter(torch.zeros(n_tokens, self.config.d_model))
+        nn.init.uniform_(self.encoder_soft_prompt)
         # init_prompt_value = torch.FloatTensor(2, 10).uniform_(-random_range, random_range)
         # self.encoder_soft_prompt.weight = nn.parameter.Parameter(init_prompt_value)
 
@@ -322,9 +334,11 @@ class T5PromptTuningMixinSimple:
         self.n_tokens = self.encoder_soft_prompt.num_embeddings
 
 
-    def initialize_decoder_soft_prompts(self, n_tokens, random_range=0.5):
+    def initialize_decoder_soft_prompts(self, n_tokens, hidden_dim, random_range=0.5):
         self.n_tokens = n_tokens
-        self.decoder_soft_prompt = nn.Embedding(n_tokens, self.config.d_model)
+        # self.decoder_soft_prompt = nn.Embedding(n_tokens, hidden_dim)
+        self.decoder_soft_prompt = nn.Parameter(torch.zeros(n_tokens, self.config.d_model))
+        nn.init.uniform_(self.decoder_soft_prompt)
         # init_prompt_value = torch.FloatTensor(2, 10).uniform_(-random_range, random_range)
         # self.decoder_soft_prompt.weight = nn.parameter.Parameter(init_prompt_value)
 
@@ -335,29 +349,36 @@ class T5PromptTuningMixinSimple:
 
 
     def concatenate_encoder_soft_prompts(self, input_ids):
-        soft_prompts = self.encoder_soft_prompt(self.encoder_input_tokens)
+        # inputs_emb = self.encoder_soft_prompt(self.encoder_input_tokens)
+        # soft_prompts = self.encoder_emb_generator(self.encoder_soft_prompt)
+
         embeddings = self.encoder.embed_tokens(input_ids)
-        soft_prompts = soft_prompts.repeat(embeddings.size(0), 1, 1)
+
+        soft_prompts = self.encoder_soft_prompt.repeat(embeddings.size(0), 1, 1)
 
         inputs_concat = torch.cat([soft_prompts, embeddings], dim=1)
         return inputs_concat
     
 
     def concatenate_decoder_soft_prompts(self, input_ids):
-        soft_prompts = self.decoder_soft_prompt(self.decoder_input_tokens)
+        # inputs_emb = self.decoder_soft_prompt(self.decoder_input_tokens)
+        # soft_prompts = self.decoder_emb_generator(self.decoder_soft_prompt)
+        
         embeddings = self.decoder.embed_tokens(input_ids)
 
-        soft_prompts = soft_prompts.repeat(embeddings.size(0), 1, 1)
+        soft_prompts = self.decoder_soft_prompt.repeat(embeddings.size(0), 1, 1)
 
         inputs_concat = torch.cat([soft_prompts, embeddings], dim=1)
         return inputs_concat
 
 
     def extend_attention_mask(self, attention_mask):
+        attention_mask = attention_mask.to(self.device)
         batch_size = attention_mask.shape[0]
-        soft_prompts_mask = torch.full((batch_size, self.n_tokens), 1, dtype=torch.long)
-        extended_mask = torch.concat([soft_prompts_mask, attention_mask], dim=1)
+        soft_prompts_mask = torch.full((batch_size, self.n_tokens), 1, dtype=torch.long).to(self.device)
+        extended_mask = torch.concat([soft_prompts_mask, attention_mask], dim=1).to(self.device)
         return extended_mask
+
     
 
     def extend_labels(self, labels, ignore_index=-100):
@@ -439,32 +460,34 @@ class T5PromptTuningMixinSimple:
         '''
         we pass the encoder and decoder embeddings to the forward layer of T5
         '''
-        with torch.no_grad():
-            return super().forward(
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-                inputs_embeds=inputs_embeds,
-                decoder_input_ids=decoder_input_ids,
-                decoder_inputs_embeds=decoder_inputs_embeds,
-                decoder_attention_mask=decoder_attention_mask,
-                labels=labels,
-                encoder_outputs=encoder_outputs,
-                past_key_values=past_key_values,
-                use_cache=use_cache,
-                return_dict=return_dict,
-                *args,
-                **kwargs
-            )
+        return super().forward(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            inputs_embeds=inputs_embeds,
+            decoder_input_ids=decoder_input_ids,
+            decoder_inputs_embeds=decoder_inputs_embeds,
+            decoder_attention_mask=decoder_attention_mask,
+            labels=labels,
+            encoder_outputs=encoder_outputs,
+            past_key_values=past_key_values,
+            use_cache=use_cache,
+            return_dict=return_dict,
+            *args,
+            **kwargs
+        )
 
 
     def generate(self, *args, **kwargs):
-
-        kwargs['inputs_embeds'] = self.concatenate_encoder_soft_prompts(kwargs['input_ids']).to(self.device)
+        if 'input_ids' in args:
+            kwargs['inputs_embeds'] = self.concatenate_encoder_soft_prompts(kwargs['input_ids']).to(self.device)
+            del kwargs['input_ids'] 
+        else:
+            kwargs['inputs_embeds'] = self.concatenate_encoder_soft_prompts(args[0]).to(self.device)
+            args = args[1:]
         kwargs['attention_mask']=self.extend_attention_mask(torch.ones([1,kwargs['inputs_embeds'].shape[1]-self.n_tokens]).long()).to(self.device)
 
-        del kwargs['input_ids']
-
         return super().generate(*args, **kwargs)
+
 
 '''
 Defining the T5 model with prompt tuning superclassing T5PromptTuningUtils and 
@@ -475,20 +498,7 @@ class T5PromptTuningSimple(T5PromptTuningMixinSimple, T5ForConditionalGeneration
     def __init__(self, config) -> None:
         super(T5PromptTuningSimple, self).__init__(config)
 
-class MT5PromptTuningSimple(T5PromptTuningMixinSimple, T5ForConditionalGeneration):
+class MT5PromptTuningSimple(T5PromptTuningMixinSimple, MT5ForConditionalGeneration):
 
     def __init__(self, config) -> None:
         super(MT5PromptTuningSimple, self).__init__(config)
-
-
-
-
-class T5PromptTuning(T5PromptTuningMixin, T5ForConditionalGeneration):
-
-    def __init__(self, config) -> None:
-        super(T5PromptTuning, self).__init__(config)
-
-class MT5PromptTuning(T5PromptTuningMixin, T5ForConditionalGeneration):
-
-    def __init__(self, config) -> None:
-        super(MT5PromptTuning, self).__init__(config)
