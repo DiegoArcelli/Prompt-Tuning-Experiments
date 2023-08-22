@@ -61,6 +61,9 @@ def tokenize_dataset(data):
             record["labels"] = tokenized_label.input_ids
             records.append(record)
 
+            if idx == 100:
+                break
+
             pbar.update(1)
 
         return records

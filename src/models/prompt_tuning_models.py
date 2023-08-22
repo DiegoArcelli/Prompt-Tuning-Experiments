@@ -478,7 +478,7 @@ class T5PromptTuningMixinSimple:
 
 
     def generate(self, *args, **kwargs):
-        if 'input_ids' in args:
+        if 'input_ids' in kwargs:
             kwargs['inputs_embeds'] = self.concatenate_encoder_soft_prompts(kwargs['input_ids']).to(self.device)
             del kwargs['input_ids'] 
         else:
