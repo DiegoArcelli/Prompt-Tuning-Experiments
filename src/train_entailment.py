@@ -102,7 +102,7 @@ def compute_metrics(eval_preds):
     return result
 
 
-model = T5ForConditionalGeneration.from_pretrained("t5-small")
+model = load_model(prompt_tuning=True)
 data_collator = DataCollatorForSeq2Seq(tokenizer=tokenizer, model="t5-small")
 
 training_args = Seq2SeqTrainingArguments(
