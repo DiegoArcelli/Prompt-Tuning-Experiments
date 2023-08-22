@@ -21,10 +21,8 @@ def load_model(prompt_tuning=False):
             "t5-small",
             encoder_soft_prompt_path = None,
             decoder_soft_prompt_path = None,
-            encoder_n_tokens = 20,
-            decoder_n_tokens = 20,
-            # encoder_hidden_dim = 512,
-            # decoder_hidden_dim = 512,
+            encoder_n_tokens = 60,
+            decoder_n_tokens = 60,
             device=device
         )
     return model
@@ -60,9 +58,6 @@ def tokenize_dataset(data):
             record["attention_mask"] = tokenized_text.attention_mask
             record["labels"] = tokenized_label.input_ids
             records.append(record)
-
-            if idx == 100:
-                break
 
             pbar.update(1)
 
