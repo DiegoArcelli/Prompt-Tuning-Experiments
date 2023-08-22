@@ -1,14 +1,12 @@
 import sys
 sys.path.append("./models/")
-from models.prompt_tuning_models import T5PromptTuningSimple
+from models.prompt_tuning_models_multiple import MT5PromptTuningSimple
 from utils import count_parameters
 from transformers import AutoTokenizer
 import torch
 
-model = T5PromptTuningSimple.from_pretrained("t5-small", None, None, 10, 10, device="cuda")
-model = model.to("cuda")
-
-tokenizer = AutoTokenizer.from_pretrained("t5-small")
+model = MT5PromptTuningSimple.from_pretrained("google/mt5-small", None, None, 10, 10, device="cuda")
+tokenizer = AutoTokenizer.from_pretrained("google/mt5-small")
 
 inputs = tokenizer(["Hello, my dog is cute", "I hate black cats"], padding=True, truncation=True, return_tensors="pt")
 targets = tokenizer(["Ciao, il mio cane è carino", "Odio i gatti neri"], padding=True, truncation=True, return_tensors="pt")

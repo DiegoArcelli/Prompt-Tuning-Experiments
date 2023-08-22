@@ -6,15 +6,18 @@ from transformers import AutoTokenizer
 import evaluate
 import numpy as np
 from transformers import DataCollatorForSeq2Seq
-from models.prompt_tuning_models_multiple import MT5PromptTuningSimple
+# from models.prompt_tuning_models import T5PromptTuning, T5PromptTuningSimple
+from models.prompt_tuning_models import T5PromptTuningSimple
 from transformers.utils import logging
 from torch.nn import Linear
 import torch
-
+from utils import count_parameters
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, default_data_collator, get_linear_schedule_with_warmup
+from peft import get_peft_config, get_peft_model, get_peft_model_state_dict, PrefixTuningConfig, TaskType
 
 # logging.set_verbosity_info()
 # logger = logging.get_logger("transformers")
-# logger.info("INF(data_set.test_data["test"])
+# logger.info("INFO")
 # logger.warning("WARN")
 
 config = {
@@ -60,23 +63,18 @@ def compute_metrics(eval_preds):
     return result
 
 
-src_tokenizer = AutoTokenizer.from_pretrained("google/mt5-small")
-dst_tokenizer = AutoTokenizer.from_pretrained("google/mt5-small")
+src_tokenizer = AutoTokenizer.from_pretrained("t5-small")
+dst_tokenizer = AutoTokenizer.from_pretrained("dbmdz/bert-base-italian-cased")
 
 
 # model = T5ForNMT.from_pretrained("t5-small", hidden_size=512, voc_size=config["dst_vocab_size"])
-model = MT5PromptTuningSimple.from_pretrained(
-    "google/mt5-small",
-    encoder_soft_prompt_path = None,
-    decoder_soft_prompt_path = None,
-    encoder_n_tokens = 20,
-    decoder_n_tokens = 20,
-    device=device
-)
+peft_config = PrefixTuningConfig(task_type=TaskType.SEQ_2_SEQ_LM, inference_mode=False, num_virtual_tokens=20)
 
-model = model.to(device)
+model = AutoModelForSeq2SeqLM.from_pretrained("t5-small")
+model = get_peft_model(model, peft_config)
+model.print_trainable_parameters()
 
-data_collator = DataCollatorForSeq2Seq(tokenizer=dst_tokenizer, model="google/mt5-small")
+data_collator = DataCollatorForSeq2Seq(tokenizer=dst_tokenizer, model="t5-small")
 # model.lm_head = Linear(in_features=512, out_features=31102, bias=False)
 
 
@@ -103,7 +101,7 @@ training_args = Seq2SeqTrainingArguments(
     save_total_limit=3,
     num_train_epochs=2,
     predict_with_generate=True,
-    fp16=False,
+    fp16=True,
     push_to_hub=False,
     logging_strategy="steps",
     logging_steps=100,
