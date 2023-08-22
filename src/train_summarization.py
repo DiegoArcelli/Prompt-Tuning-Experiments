@@ -7,9 +7,16 @@ from datasets import load_dataset
 from torch.utils.data import random_split
 from tqdm import tqdm
 from datasets import Dataset, DatasetDict
+import torch
+from seq2seq_trainer_prompt import Seq2SeqTrainerPrompt
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, default_data_collator, get_linear_schedule_with_warmup
+from peft import get_peft_config, get_peft_model, get_peft_model_state_dict, PrefixTuningConfig, TaskType
+from utils import load_model
 
 
 tokenizer = T5Tokenizer.from_pretrained("t5-small")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 metric = evaluate.load("rouge")
 dataset = load_dataset("billsum")
@@ -47,10 +54,8 @@ val_split = 0.1
 val_size = int(len(train_data)*val_split)
 
 train_data = Dataset.from_list(train_data)
-train_val_data = train_data.train_test_split(test_size=val_size)
-
-# valid_data = Dataset.from_list(valid_data)
 test_data = Dataset.from_list(test_data)
+train_val_data = train_data.train_test_split(test_size=val_size)
 
 
 def postprocess_text(preds, labels):
@@ -80,16 +85,16 @@ def compute_metrics(eval_preds):
     return result
 
 
-model = T5ForConditionalGeneration.from_pretrained("t5-small")
+model = load_model(mode="prompt")
 data_collator = DataCollatorForSeq2Seq(tokenizer=tokenizer, model="t5-small")
 
 training_args = Seq2SeqTrainingArguments(
     output_dir="output/",
     evaluation_strategy="epoch",
     save_strategy="epoch",
-    learning_rate=2e-5,
-    per_device_train_batch_size=2,
-    per_device_eval_batch_size=2,
+    learning_rate=0.1,
+    per_device_train_batch_size=4,
+    per_device_eval_batch_size=4,
     weight_decay=0.01,
     save_total_limit=3,
     num_train_epochs=2,
@@ -102,7 +107,7 @@ training_args = Seq2SeqTrainingArguments(
     #disable_tqdm=True
 )
 
-trainer = Seq2SeqTrainer(
+trainer = Seq2SeqTrainerPrompt(
     model=model,
     args=training_args,
     train_dataset=train_val_data["train"],

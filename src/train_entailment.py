@@ -7,25 +7,13 @@ from datasets import load_dataset
 from torch.utils.data import random_split
 from tqdm import tqdm
 from datasets import Dataset, DatasetDict
-from models.prompt_tuning_models import T5PromptTuningSimple
 import torch
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, default_data_collator, get_linear_schedule_with_warmup
+from peft import get_peft_config, get_peft_model, get_peft_model_state_dict, PrefixTuningConfig, TaskType
+from seq2seq_trainer_prompt import Seq2SeqTrainerPrompt
+from utils import load_model
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-
-def load_model(prompt_tuning=False):
-    if prompt_tuning == False:
-        model = T5ForConditionalGeneration.from_pretrained("t5-small")
-    else:
-        model = T5PromptTuningSimple.from_pretrained(
-            "t5-small",
-            encoder_soft_prompt_path = None,
-            decoder_soft_prompt_path = None,
-            encoder_n_tokens = 60,
-            decoder_n_tokens = 60,
-            device=device
-        )
-    return model
 
 tokenizer = T5Tokenizer.from_pretrained("t5-small")
 
@@ -111,7 +99,7 @@ def compute_metrics(eval_preds):
     return result
 
 
-model = load_model(prompt_tuning=True)
+model = load_model(mode="prompt")
 data_collator = DataCollatorForSeq2Seq(tokenizer=tokenizer, model="t5-small")
 
 training_args = Seq2SeqTrainingArguments(
@@ -133,7 +121,7 @@ training_args = Seq2SeqTrainingArguments(
     #disable_tqdm=True
 )
 
-trainer = Seq2SeqTrainer(
+trainer = Seq2SeqTrainerPrompt(
     model=model,
     args=training_args,
     train_dataset=train_data,

@@ -1,4 +1,22 @@
 import matplotlib.pyplot as plt
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, default_data_collator, get_linear_schedule_with_warmup
+from peft import get_peft_config, get_peft_model, get_peft_model_state_dict, PrefixTuningConfig, TaskType, PromptTuningConfig
+
+
+def load_model(model_name="t5-small", mode="normal", num_tokens=20):
+    if mode == "normal":
+        model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+    elif mode == "prompt":
+        peft_config = PromptTuningConfig(task_type=TaskType.SEQ_2_SEQ_LM, inference_mode=False, num_virtual_tokens=num_tokens)
+        model = AutoModelForSeq2SeqLM.from_pretrained("t5-small")
+        model = get_peft_model(model, peft_config)
+        model.print_trainable_parameters()
+    elif mode == "prefix":
+        peft_config = PrefixTuningConfig(task_type=TaskType.SEQ_2_SEQ_LM, inference_mode=False, num_virtual_tokens=num_tokens)
+        model = AutoModelForSeq2SeqLM.from_pretrained("t5-small")
+        model = get_peft_model(model, peft_config)
+        model.print_trainable_parameters()
+    return model
 
 
 def count_parameters(model):
