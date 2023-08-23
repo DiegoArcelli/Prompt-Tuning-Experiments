@@ -1,3 +1,4 @@
+import sys
 from transformers import Trainer, TrainingArguments
 from transformers import AutoTokenizer, T5Tokenizer, AutoModelForAudioClassification
 import evaluate
@@ -12,22 +13,47 @@ from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, default_data_coll
 from peft import get_peft_config, get_peft_model, get_peft_model_state_dict, PrefixTuningConfig, TaskType
 from seq2seq_trainer_prompt import Seq2SeqTrainerPrompt
 from utils import load_model
+from glue_config import glue_config
+import argparse
+
+
+parser = argparse.ArgumentParser( prog='Train GLUE', description='Train GLUE')
+parser.add_argument('-t', '--task', default="mrpc", type=str)
+parser.add_argument('-m', '--mode', default="normal", type=str)    
+parser.add_argument('-lr', '--learning_rate', default=3e-5, type=float)
+parser.add_argument('-e', '--epochs', default=5, type=int)
+
+args = parser.parse_args()
+
+task = args.task
+mode = args.mode
+lr = args.learning_rate
+epochs = args.epochs
+
+task_config = glue_config[task]
+
+num_attrs = len(task_config.kesy())
+attr1 = task_config["attribute_1"]
+attr2 = None if num_attrs == 1 else task_config["attribute_2"]
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-metric = evaluate.load("glue", 'mrpc')
-dataset = load_dataset("glue", 'mrpc')
+metric = evaluate.load("glue", task)
+dataset = load_dataset("glue", task)
 
-model, tokenizer = load_model(mode="prompt", model_type="sequence_classification", model_name="roberta-base")
+model, tokenizer = load_model(mode=mode, model_type="sequence_classification", model_name="roberta-base")
 
 def tokenize_function(examples):
-    outputs = tokenizer(examples["sentence1"], examples["sentence2"], truncation=True, max_length=None)
+    if num_attrs == 2:
+        outputs = tokenizer(examples[attr1], examples[attr2], truncation=True, max_length=None)
+    else:
+        outputs = tokenizer(examples[attr1], truncation=True, max_length=None)
     return outputs
 
 tokenized_datasets = dataset.map(
     tokenize_function,
     batched=True,
-    remove_columns=["sentence1", "sentence2", "idx"]
+    remove_columns=[attr1, attr2, "idx"]
 )
 
 tokenized_datasets = tokenized_datasets.rename_column("label", "labels")
@@ -45,12 +71,12 @@ training_args = TrainingArguments(
     output_dir="output/",
     evaluation_strategy="epoch",
     save_strategy="epoch",
-    learning_rate=1e-3,
+    learning_rate=lr,
     per_device_train_batch_size=32,
     per_device_eval_batch_size=32,
     weight_decay=0.01,
     save_total_limit=4,
-    num_train_epochs=2,
+    num_train_epochs=epochs,
     fp16=True,
     push_to_hub=False,
     logging_strategy="steps",
