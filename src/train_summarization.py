@@ -114,6 +114,10 @@ training_args = Seq2SeqTrainingArguments(
     weight_decay=0.01,
     save_total_limit=3,
     num_train_epochs=num_epochs,
+    lr_scheduler_type="linear",
+    adam_beta1=0.9,
+    adam_beta2=0.99,
+    adam_epsilon=1e-8,
     predict_with_generate=True,
     fp16=True,
     push_to_hub=False,
@@ -134,13 +138,7 @@ trainer = Seq2SeqTrainerPrompt(
     compute_metrics=compute_metrics,
 )
 
-lr_scheduler = get_linear_schedule_with_warmup(
-    optimizer=optimizer,
-    num_warmup_steps=0,
-    num_training_steps=(len(trainer.train_dataloader) * num_epochs),
-)
-
-trainer.train(scheduler=lr_scheduler)
+trainer.train()
 
 train_results = trainer.evaluate(train_val_data["train"])
 valid_results = trainer.evaluate(train_val_data["test"])
