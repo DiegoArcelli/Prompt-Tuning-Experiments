@@ -14,13 +14,13 @@ from peft import get_peft_config, get_peft_model, get_peft_model_state_dict, Pre
 from utils import load_model
 
 
-tokenizer = T5Tokenizer.from_pretrained("t5-small")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
 
 metric = evaluate.load("rouge")
 dataset = load_dataset("billsum")
 
+
+model, tokenizer = load_model(mode="prefix", model_type="generation", model_name="t5-small")
 
 def tokenize_dataset(data):
 
@@ -85,7 +85,6 @@ def compute_metrics(eval_preds):
     return result
 
 
-model = load_model(mode="prompt")
 data_collator = DataCollatorForSeq2Seq(tokenizer=tokenizer, model="t5-small")
 
 training_args = Seq2SeqTrainingArguments(
