@@ -22,13 +22,15 @@ parser.add_argument('-t', '--task', default="mrpc", type=str)
 parser.add_argument('-m', '--mode', default="normal", type=str)    
 parser.add_argument('-lr', '--learning_rate', default=3e-5, type=float)
 parser.add_argument('-e', '--epochs', default=5, type=int)
+parser.add_argument('-b', '--batch_size', default=4, type=int)
 
 args = parser.parse_args()
 
 task = args.task
 mode = args.mode
 lr = args.learning_rate
-epochs = args.epochs
+num_epochs = args.epochs
+batch_size = args.batch_size
 
 task_config = glue_config[task]
 
@@ -62,21 +64,26 @@ train_data = tokenized_datasets["train"]
 valid_data = tokenized_datasets["validation"]
 test_data = tokenized_datasets["test"]
 
+
 def compute_metrics(eval_pred):
     predictions, labels = eval_pred
     predictions = np.argmax(predictions, axis=1)
     return metric.compute(predictions=predictions, references=labels)
+
+
+optimizer = torch.optim.AdamW(model.parameters(), lr=lr, betas=(0.9,0.999), eps=1e-8)
 
 training_args = TrainingArguments(
     output_dir="output/",
     evaluation_strategy="epoch",
     save_strategy="epoch",
     learning_rate=lr,
-    per_device_train_batch_size=32,
-    per_device_eval_batch_size=32,
+    per_device_train_batch_size=batch_size,
+    per_device_eval_batch_size=batch_size,
     weight_decay=0.01,
     save_total_limit=4,
-    num_train_epochs=epochs,
+    num_train_epochs=num_epochs,
+    adam_epsilon=1e-8,
     fp16=True,
     push_to_hub=False,
     logging_strategy="steps",
@@ -98,7 +105,13 @@ trainer = Trainer(
     compute_metrics=compute_metrics,
 )
 
-trainer.train()
+lr_scheduler = get_linear_schedule_with_warmup(
+    optimizer=optimizer,
+    num_warmup_steps=0,
+    num_training_steps=(len(trainer.train_dataloader) * num_epochs),
+)
+
+trainer.train(scheduler=lr_scheduler)
 
 train_results = trainer.evaluate(train_data)
 valid_results = trainer.evaluate(valid_data)

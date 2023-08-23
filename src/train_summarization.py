@@ -12,6 +12,21 @@ from seq2seq_trainer_prompt import Seq2SeqTrainerPrompt
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, default_data_collator, get_linear_schedule_with_warmup
 from peft import get_peft_config, get_peft_model, get_peft_model_state_dict, PrefixTuningConfig, TaskType
 from utils import load_model
+import argparse
+
+
+parser = argparse.ArgumentParser( prog='Train GLUE', description='Train GLUE')
+parser.add_argument('-m', '--mode', default="normal", type=str)    
+parser.add_argument('-lr', '--learning_rate', default=2e-3, type=float)
+parser.add_argument('-e', '--epochs', default=4, type=int)
+parser.add_argument('-b', '--batch_size', default=4, type=int)
+
+args = parser.parse_args()
+
+mode = args.mode
+lr = args.learning_rate
+num_epochs = args.epochs
+batch_size = args.batch_size
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -20,7 +35,7 @@ metric = evaluate.load("rouge")
 dataset = load_dataset("billsum")
 
 
-model, tokenizer = load_model(mode="prefix", model_type="generation", model_name="t5-small")
+model, tokenizer = load_model(mode=mode, model_type="generation", model_name="t5-small")
 
 def tokenize_dataset(data):
 
@@ -28,8 +43,8 @@ def tokenize_dataset(data):
     with tqdm(total=len(data)) as pbar:
         for idx, data in enumerate(data):
             record = {}
-            tokenized_text = tokenizer(data["text"], max_length=1024, truncation=True, return_tensors='pt')
-            tokenized_summary = tokenizer(data["summary"], max_length=128, truncation=True, return_tensors='pt')
+            tokenized_text = tokenizer(data["text"], max_length=None, truncation=True, return_tensors='pt')
+            tokenized_summary = tokenizer(data["summary"], max_length=None, truncation=True, return_tensors='pt')
 
             for key in tokenized_text.keys():
                 tokenized_text[key] = tokenized_text[key][0]
@@ -85,24 +100,27 @@ def compute_metrics(eval_preds):
     return result
 
 
+
+optimizer = torch.optim.AdamW(model.parameters(), lr=lr, betas=(0.9,0.999), eps=1e-8)
 data_collator = DataCollatorForSeq2Seq(tokenizer=tokenizer, model="t5-small")
 
 training_args = Seq2SeqTrainingArguments(
     output_dir="output/",
     evaluation_strategy="epoch",
     save_strategy="epoch",
-    learning_rate=0.1,
-    per_device_train_batch_size=4,
-    per_device_eval_batch_size=4,
+    learning_rate=lr,
+    per_device_train_batch_size=batch_size,
+    per_device_eval_batch_size=batch_size,
     weight_decay=0.01,
     save_total_limit=3,
-    num_train_epochs=2,
+    num_train_epochs=num_epochs,
     predict_with_generate=True,
     fp16=True,
     push_to_hub=False,
     logging_strategy="steps",
     logging_steps=100,
     logging_dir="logs/",
+    load_best_model_at_end=True,
     #disable_tqdm=True
 )
 
@@ -116,7 +134,13 @@ trainer = Seq2SeqTrainerPrompt(
     compute_metrics=compute_metrics,
 )
 
-trainer.train()
+lr_scheduler = get_linear_schedule_with_warmup(
+    optimizer=optimizer,
+    num_warmup_steps=0,
+    num_training_steps=(len(trainer.train_dataloader) * num_epochs),
+)
+
+trainer.train(scheduler=lr_scheduler)
 
 train_results = trainer.evaluate(train_val_data["train"])
 valid_results = trainer.evaluate(train_val_data["test"])
