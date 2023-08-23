@@ -10,7 +10,7 @@ def load_model(model_type="generation", model_name="t5-small", mode="normal", nu
         if model_type == "generation":
             model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
         elif model_type == "sequence_classification":
-            model = AutoModelForSequenceClassification.from_pretrained(model_name)
+            model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2)
 
     elif mode == "prompt":
         if model_type == "generation":
@@ -20,8 +20,11 @@ def load_model(model_type="generation", model_name="t5-small", mode="normal", nu
             model.print_trainable_parameters()
         elif model_type == "sequence_classification":
             peft_config = PromptTuningConfig(task_type=TaskType.SEQ_CLS, num_virtual_tokens=20)
-            model = AutoModelForSequenceClassification.from_pretrained(model_name, return_dict=True)
+            model = AutoModelForSequenceClassification.from_pretrained(model_name, return_dict=True, num_labels=2)
             model = get_peft_model(model, peft_config)
+            for n, p in model.named_parameters():
+                if "classifier" in n:
+                    p.requires_grad = True
             model.print_trainable_parameters()
 
     elif mode == "prefix":
@@ -32,8 +35,11 @@ def load_model(model_type="generation", model_name="t5-small", mode="normal", nu
             model.print_trainable_parameters()
         elif model_type == "sequence_classification":
             peft_config = PrefixTuningConfig(task_type=TaskType.SEQ_CLS, num_virtual_tokens=20)
-            model = AutoModelForSequenceClassification.from_pretrained(model_name, return_dict=True)
+            model = AutoModelForSequenceClassification.from_pretrained(model_name, return_dict=True, num_labels=2)
             model = get_peft_model(model, peft_config)
+            for n, p in model.named_parameters():
+                if "classifier" in n:
+                    p.requires_grad = True
             model.print_trainable_parameters()
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)

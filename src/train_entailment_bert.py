@@ -15,7 +15,7 @@ from utils import load_model
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-metric = evaluate.load("accuracy")
+metric = evaluate.load("super_glue", 'rte')
 dataset = load_dataset("super_glue", 'rte')
 
 model, tokenizer = load_model(mode="prompt", model_type="sequence_classification", model_name="bert-base-uncased")
@@ -29,6 +29,8 @@ tokenized_datasets = dataset.map(
     batched=True,
     remove_columns=["premise", "hypothesis", "idx"]
 )
+
+tokenized_datasets = tokenized_datasets.rename_column("label", "labels")
 
 train_data = tokenized_datasets["train"]
 valid_data = tokenized_datasets["validation"]
@@ -54,6 +56,7 @@ training_args = TrainingArguments(
     logging_strategy="steps",
     logging_steps=100,
     logging_dir="logs/",
+    load_best_model_at_end=True,
     #disable_tqdm=True
 )
 
@@ -67,7 +70,6 @@ trainer = Trainer(
     tokenizer=tokenizer,
     data_collator=data_collator,
     compute_metrics=compute_metrics,
-    load_best_model_at_end=True,
 )
 
 trainer.train()
