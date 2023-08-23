@@ -17,7 +17,7 @@ import argparse
 
 parser = argparse.ArgumentParser( prog='Train GLUE', description='Train GLUE')
 parser.add_argument('-m', '--mode', default="normal", type=str)    
-parser.add_argument('-lr', '--learning_rate', default=2e-3, type=float)
+parser.add_argument('-lr', '--learning_rate', default=2e-5, type=float)
 parser.add_argument('-e', '--epochs', default=4, type=int)
 parser.add_argument('-b', '--batch_size', default=4, type=int)
 
