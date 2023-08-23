@@ -15,19 +15,19 @@ from utils import load_model
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-metric = evaluate.load("super_glue", 'rte')
-dataset = load_dataset("super_glue", 'rte')
+metric = evaluate.load("glue", 'mrpc')
+dataset = load_dataset("glue", 'mrpc')
 
-model, tokenizer = load_model(mode="prompt", model_type="sequence_classification", model_name="bert-base-uncased")
+model, tokenizer = load_model(mode="prompt", model_type="sequence_classification", model_name="roberta-base")
 
 def tokenize_function(examples):
-    outputs = tokenizer(examples["premise"], examples["hypothesis"], truncation=True, max_length=None)
+    outputs = tokenizer(examples["sentence1"], examples["sentence2"], truncation=True, max_length=None)
     return outputs
 
 tokenized_datasets = dataset.map(
     tokenize_function,
     batched=True,
-    remove_columns=["premise", "hypothesis", "idx"]
+    remove_columns=["sentence1", "sentence2", "idx"]
 )
 
 tokenized_datasets = tokenized_datasets.rename_column("label", "labels")
@@ -46,11 +46,11 @@ training_args = TrainingArguments(
     evaluation_strategy="epoch",
     save_strategy="epoch",
     learning_rate=1e-3,
-    per_device_train_batch_size=4,
-    per_device_eval_batch_size=4,
+    per_device_train_batch_size=32,
+    per_device_eval_batch_size=32,
     weight_decay=0.01,
     save_total_limit=4,
-    num_train_epochs=4,
+    num_train_epochs=2,
     fp16=True,
     push_to_hub=False,
     logging_strategy="steps",
