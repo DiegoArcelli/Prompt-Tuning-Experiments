@@ -13,35 +13,38 @@ from peft import get_peft_config, get_peft_model, get_peft_model_state_dict, Pre
 from seq2seq_trainer_prompt import Seq2SeqTrainerPrompt
 from utils import load_model
 
+num_text_map = {
+    0: "entailment",
+    1: "not entailment",
+    -1: "don't know"
+}
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-model, tokenizer = load_model(mode="prefix", model_type="generation", model_name="t5-small")
+model, tokenizer = load_model(mode="normal", model_type="generation", model_name="t5-small")
 
 metric = evaluate.load("accuracy")
 dataset = load_dataset("super_glue", 'rte')
 
-def tokenize_dataset(data):
+text_attr1 = "premise"
+text_attr2 = "hypothesis"
+
+def tokenize_dataset(dataset):
 
     records = []
-    with tqdm(total=len(data)) as pbar:
-        for idx, data in enumerate(data):
-
-            premise = data["premise"]
-            hypothesis = data["hypothesis"]
-            label = "entailment" if data["label"] == 0 else "not entailment"
-
-            text = f"[PREMISE] {premise} [HYPOTHESIS] {hypothesis}"
-
+    with tqdm(total=len(dataset)) as pbar:
+        for idx, data in enumerate(dataset):
             record = {}
-            tokenized_text = tokenizer(text, max_length=1024, truncation=True, return_tensors='pt')
-            tokenized_label = tokenizer(label, max_length=128, truncation=True, return_tensors='pt')
+            premise = data[text_attr1]
+            hypothesis = data[text_attr2]
+            text = f"rte sentence 1: {premise} sentence 2: {hypothesis}"
+            label = data["label"]
+            label = num_text_map[label]
 
-            for key in tokenized_text.keys():
-                tokenized_text[key] = tokenized_text[key][0]
-                tokenized_label[key] = tokenized_label[key][0]
+            tokenized_text = tokenizer(text, max_length=None, truncation=True) 
+            tokenized_label = tokenizer(label, max_length=6, truncation=True)
 
             record["id"] = idx
-
             record["input_ids"] = tokenized_text.input_ids
             record["attention_mask"] = tokenized_text.attention_mask
             record["labels"] = tokenized_label.input_ids
@@ -50,53 +53,36 @@ def tokenize_dataset(data):
             pbar.update(1)
 
         return records
+    
 
+test_split = 0.1
+test_size = int(len(dataset["train"])*test_split)
+train_test_set = dataset["train"].train_test_split(test_size)
 
-train_data = tokenize_dataset(dataset["train"])
-valid_data = tokenize_dataset(dataset["validation"])
-test_data = tokenize_dataset(dataset["test"])
+train_data = Dataset.from_list(tokenize_dataset(train_test_set["train"]))
+test_data = Dataset.from_list(tokenize_dataset(train_test_set["test"]))
+valid_data = Dataset.from_list(tokenize_dataset(dataset["validation"]))
 
-train_data = Dataset.from_list(train_data)
-valid_data = Dataset.from_list(valid_data)
-test_data = Dataset.from_list(test_data)
-
-
-def postprocess_text(preds, labels):
-    preds = [pred.strip() for pred in preds]
-    labels = [label.strip() for label in labels]
-
-    return preds, labels
+print(train_data)
+print(test_data)
+print(valid_data)
 
 
 def compute_metrics(eval_preds):
     preds, labels = eval_preds
-    if isinstance(preds, tuple):
-        preds = preds[0]
-    decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
-
     labels = np.where(labels != -100, labels, tokenizer.pad_token_id)
-    decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
+    preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
+    labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
+    # print(preds, labels)
 
-    decoded_preds, decoded_labels = postprocess_text(decoded_preds, decoded_labels)
-    
-    def pred_to_num(pred):
-        if pred == "entailment":
-            return 0
-        elif pred == "not entailment":
-            return 1
-        else:
-            return 2
-    
-    decoded_preds = list(map(pred_to_num, decoded_preds))
-    decoded_labels = list(map(pred_to_num, decoded_labels))
-
-    result = metric.compute(predictions=decoded_preds, references=decoded_labels)
-    # result = {"bleu": result["score"]}
-
-    prediction_lens = [np.count_nonzero(pred != tokenizer.pad_token_id) for pred in preds]
-    result["gen_len"] = np.mean(prediction_lens)
-    result = {k: round(v, 4) for k, v in result.items()}
-    return result
+    correct = 0
+    total = 0
+    for pred, true in zip(preds, labels):
+        if pred.strip() == true.strip():
+            correct += 1
+        total += 1
+    accuracy = correct / total
+    return {"accuracy": accuracy}
 
 
 data_collator = DataCollatorForSeq2Seq(tokenizer=tokenizer, model="t5-small")
@@ -105,17 +91,17 @@ training_args = Seq2SeqTrainingArguments(
     output_dir="output/",
     evaluation_strategy="epoch",
     save_strategy="epoch",
-    learning_rate=0.1,
+    learning_rate=3e-4,
     per_device_train_batch_size=4,
     per_device_eval_batch_size=4,
     weight_decay=0.01,
-    save_total_limit=4,
-    num_train_epochs=4,
+    save_total_limit=3,
+    num_train_epochs=3,
     predict_with_generate=True,
     fp16=True,
     push_to_hub=False,
     logging_strategy="steps",
-    logging_steps=100,
+    logging_steps=10,
     logging_dir="logs/",
     #disable_tqdm=True
 )
