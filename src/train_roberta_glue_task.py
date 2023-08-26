@@ -43,6 +43,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 dataset = load_dataset("glue", task)
 metric = evaluate.load("glue", task)
 
+exit()
 model, tokenizer = load_model(mode=mode, model_type="sequence_classification", model_name="bert-base-uncased")
 
 def tokenize_function(examples):
