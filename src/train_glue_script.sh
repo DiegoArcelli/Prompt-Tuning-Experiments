@@ -12,11 +12,11 @@ if [ $# -eq 0 ]
 fi
 
 python3 train_roberta_glue_task.py -t cola -b $bsize -lr $lr -m $mode -e $epochs > terminal_output/output_glue_cola_$mode
-python3 train_roberta_glue_task.py -t mnli -b $bsize -lr $lr -m $mode -e $epochs > terminal_output/output_glue_cola_$mode
-python3 train_roberta_glue_task.py -t mrpc -b $bsize -lr $lr -m $mode -e $epochs > terminal_output/output_glue_cola_$mode
-python3 train_roberta_glue_task.py -t qnli -b $bsize -lr $lr -m $mode -e $epochs > terminal_output/output_glue_cola_$mode
-python3 train_roberta_glue_task.py -t qqp -b $bsize -lr $lr -m $mode -e $epochs > terminal_output/output_glue_cola_$mode
-python3 train_roberta_glue_task.py -t rte -b $bsize -lr $lr -m $mode -e $epochs > terminal_output/output_glue_cola_$mode
-python3 train_roberta_glue_task.py -t sst2 -b $bsize -lr $lr -m $mode -e $epochs > terminal_output/output_glue_cola_$mode
-python3 train_roberta_glue_task.py -t wnli -b $bsize -lr $lr -m $mode -e $epochs > terminal_output/output_glue_cola_$mode
+python3 train_roberta_glue_task.py -t mnli -b $bsize -lr $lr -m $mode -e $epochs > terminal_output/output_glue_mnli_$mode
+python3 train_roberta_glue_task.py -t mrpc -b $bsize -lr $lr -m $mode -e $epochs > terminal_output/output_glue_mrpc_$mode
+python3 train_roberta_glue_task.py -t qnli -b $bsize -lr $lr -m $mode -e $epochs > terminal_output/output_glue_qnli_$mode
+python3 train_roberta_glue_task.py -t qqp -b $bsize -lr $lr -m $mode -e $epochs > terminal_output/output_glue_qqp_$mode
+python3 train_roberta_glue_task.py -t rte -b $bsize -lr $lr -m $mode -e $epochs > terminal_output/output_glue_rte_$mode
+python3 train_roberta_glue_task.py -t sst2 -b $bsize -lr $lr -m $mode -e $epochs > terminal_output/output_glue_sst2_$mode
+python3 train_roberta_glue_task.py -t wnli -b $bsize -lr $lr -m $mode -e $epochs > terminal_output/output_glue_wnli_$mode
 
