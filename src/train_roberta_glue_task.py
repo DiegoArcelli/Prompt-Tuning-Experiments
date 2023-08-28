@@ -85,9 +85,9 @@ def tokenize_dataset(dataset):
 # tokenized_datasets = tokenized_datasets.rename_column("label", "labels")
 
 valid_data = tokenize_dataset(dataset["validation"])
-test_split = 0.1
+test_split = 0.2
 test_size = int(len(dataset["train"])*test_split)
-train_test_set = dataset["train"].train_test_split(test_size)
+train_test_set = dataset["train"].train_test_split(test_size, stratify_by_column="label", seed=42)
 train_data = tokenize_dataset(train_test_set["train"])
 test_data = tokenize_dataset(train_test_set["test"])
 
@@ -112,9 +112,10 @@ training_args = TrainingArguments(
     per_device_train_batch_size=batch_size,
     per_device_eval_batch_size=batch_size,
     weight_decay=0.01,
-    save_total_limit=4,
+    save_total_limit=5,
     num_train_epochs=num_epochs,
     lr_scheduler_type="linear",
+    optim="adamw_hf",
     adam_beta1=0.9,
     adam_beta2=0.99,
     adam_epsilon=1e-8,
