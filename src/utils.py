@@ -53,7 +53,7 @@ def load_model(model_type="generation", model_name="t5-small", mode="normal", nu
             if "classifier" in n:
                 p.requires_grad = True
 
-    if model_type != "normal":
+    if mode != "normal":
         model.print_trainable_parameters()
     
     tokenizer = AutoTokenizer.from_pretrained(model_name)
