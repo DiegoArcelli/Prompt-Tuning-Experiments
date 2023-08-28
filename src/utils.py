@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, default_data_collator, get_linear_schedule_with_warmup, AutoModelForSequenceClassification
 from peft import get_peft_config, get_peft_model, get_peft_model_state_dict, PrefixTuningConfig, TaskType, PromptTuningConfig, PromptEncoderConfig
-from peft import PromptTuningInit
+from peft import PromptEncoderConfig, PromptEncoder
 
 
 def load_model(model_type="generation", model_name="t5-small", mode="normal", num_tokens=20, train_classifier=True):
@@ -16,20 +16,23 @@ def load_model(model_type="generation", model_name="t5-small", mode="normal", nu
         if model_type == "generation":
             peft_config = PromptTuningConfig(
                 task_type=TaskType.SEQ_2_SEQ_LM,
-                prompt_tuning_init=PromptTuningInit.TEXT,
                 inference_mode=False,
                 num_virtual_tokens=num_tokens
             )
             model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
             model = get_peft_model(model, peft_config)
+            model.print_trainable_parameters()
         elif model_type == "sequence_classification":
             peft_config = PromptTuningConfig(
                 task_type=TaskType.SEQ_CLS,
-                prompt_tuning_init=PromptTuningInit.TEXT,
                 num_virtual_tokens=20
             )
             model = AutoModelForSequenceClassification.from_pretrained(model_name, return_dict=True, num_labels=2)
             model = get_peft_model(model, peft_config)
+            for n, p in model.named_parameters():
+                if "classifier" in n:
+                    p.requires_grad = True
+            model.print_trainable_parameters()
 
     elif mode == "prefix":
         if model_type == "generation":
@@ -40,6 +43,7 @@ def load_model(model_type="generation", model_name="t5-small", mode="normal", nu
             )
             model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
             model = get_peft_model(model, peft_config)
+            model.print_trainable_parameters()
         elif model_type == "sequence_classification":
             peft_config = PrefixTuningConfig(
                 task_type=TaskType.SEQ_CLS,
@@ -47,15 +51,13 @@ def load_model(model_type="generation", model_name="t5-small", mode="normal", nu
             )
             model = AutoModelForSequenceClassification.from_pretrained(model_name, return_dict=True, num_labels=2)
             model = get_peft_model(model, peft_config)
+            model.print_trainable_parameters()
 
-    if train_classifier and model_type == "sequence_classification":
+    if train_classifier and mode != "normal":
         for n, p in model.named_parameters():
             if "classifier" in n:
                 p.requires_grad = True
 
-    if mode != "normal":
-        model.print_trainable_parameters()
-    
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     return model, tokenizer
 
