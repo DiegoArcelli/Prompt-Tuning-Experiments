@@ -43,7 +43,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 dataset = load_dataset("glue", task)
 metric = evaluate.load("glue", task)
 
-model, tokenizer = load_model(mode=mode, model_type="sequence_classification", model_name="bert-base-uncased")
+model, tokenizer = load_model(mode=mode, model_type="sequence_classification", model_name="roberta-base")
 
 def tokenize_function(examples):
     if num_attrs == 2:
@@ -74,15 +74,6 @@ def tokenize_dataset(dataset):
             pbar.update(1)
 
         return records
-
-# tokenized_datasets = dataset.map(
-#     tokenize_function,
-#     batched=True,
-#     batch_size=1,
-#     remove_columns=[attr1, attr2, "idx"] if attr2 is not None else [attr1, "idx"],
-# )
-
-# tokenized_datasets = tokenized_datasets.rename_column("label", "labels")
 
 valid_data = tokenize_dataset(dataset["validation"])
 test_split = 0.2
