@@ -95,7 +95,7 @@ def compute_metrics(eval_pred):
     predictions = np.argmax(predictions, axis=1)
     return metric.compute(predictions=predictions, references=labels)
 
-training_args = TrainingArguments(
+training_args = Seq2SeqTrainerPrompt(
     output_dir="output/",
     evaluation_strategy="epoch",
     save_strategy="epoch",
@@ -108,7 +108,7 @@ training_args = TrainingArguments(
     lr_scheduler_type="linear",
     optim="adamw_hf",
     adam_beta1=0.9,
-    adam_beta2=0.99,
+    adam_beta2=0.999,
     adam_epsilon=1e-8,
     fp16=True,
     push_to_hub=False,
@@ -116,6 +116,7 @@ training_args = TrainingArguments(
     logging_steps=100,
     logging_dir="logs/",
     load_best_model_at_end=True,
+    seed=42
     #disable_tqdm=True
 )
 
