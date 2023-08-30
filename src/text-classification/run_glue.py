@@ -48,6 +48,8 @@ from transformers.utils import check_min_version, send_example_telemetry
 from transformers.utils.versions import require_version
 
 from peft import PrefixTuningConfig, PromptTuningConfig, TaskType, get_peft_model
+os.environ["WANDB_DISABLED"] = "true"
+
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.33.0.dev0")
 
@@ -146,6 +148,10 @@ class DataTrainingArguments:
 
     train_type: Optional[str] = field(
         default="normal", metadata={"help": "Used to choose between fine-tuning, prompt-tuninig and prefix-tuning"}
+    )
+
+    test_split: Optional[float] = field(
+        default=0.2, metadata={"help": "Used to get a test set from the training set"}
     )
 
     def __post_init__(self):
@@ -389,6 +395,11 @@ def main():
         cache_dir=model_args.cache_dir,
         revision=model_args.model_revision,
         token=model_args.token,
+        evaluation_strategy="epoch",
+        load_best_model_at_end=True,
+        logging_strategy="steps",
+        logging_steps=100,
+        logging_dir="logs/",
         trust_remote_code=model_args.trust_remote_code,
     )
     tokenizer = AutoTokenizer.from_pretrained(
@@ -406,7 +417,7 @@ def main():
             num_virtual_tokens=20
         )
     
-    if data_args.train_type == "prefix":
+    if data_args.train_type == "prompt":
         peft_config = PromptTuningConfig(
             task_type=TaskType.SEQ_CLS,
             num_virtual_tokens=20
@@ -528,6 +539,11 @@ def main():
             max_predict_samples = min(len(predict_dataset), data_args.max_predict_samples)
             predict_dataset = predict_dataset.select(range(max_predict_samples))
 
+    test_size = int(len(train_dataset)*data_args.test_split)
+    train_test_set = train_dataset.train_test_split(test_size, stratify_by_column="label", seed=42)
+    train_dataset = train_test_set["train"]
+    test_dataset = train_test_set["test"]
+
     # Log a few random samples from the training set:
     if training_args.do_train:
         for index in random.sample(range(len(train_dataset)), 3):
@@ -622,6 +638,21 @@ def main():
 
             trainer.log_metrics("eval", metrics)
             trainer.save_metrics("eval", combined if task is not None and "mnli" in task else metrics)
+
+            metrics = trainer.evaluate(eval_dataset=test_dataset)
+
+            max_eval_samples = (
+                data_args.max_eval_samples if data_args.max_eval_samples is not None else len(test_dataset)
+            )
+            metrics["eval_samples"] = min(max_eval_samples, len(test_dataset))
+
+            if task == "mnli-mm":
+                metrics = {k + "_mm": v for k, v in metrics.items()}
+            if task is not None and "mnli" in task:
+                combined.update(metrics)
+
+            trainer.log_metrics("test", metrics)
+            trainer.save_metrics("test", combined if task is not None and "mnli" in task else metrics)
 
     if training_args.do_predict:
         logger.info("*** Predict ***")

@@ -38,6 +38,7 @@ num_attrs = len(task_config.keys())
 attr1 = task_config["attribute_1"]
 attr2 = None if num_attrs == 1 else task_config["attribute_2"]
 num_text_map = task_config["num_to_text"]
+text_num_map = {v: k for (k, v) in num_text_map.keys()}
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -83,16 +84,17 @@ def compute_metrics(eval_preds):
     labels = np.where(labels != -100, labels, tokenizer.pad_token_id)
     preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
     labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
+    return metric.compute(predictions=preds, references=labels)
     # print(preds, labels)
 
-    correct = 0
-    total = 0
-    for pred, true in zip(preds, labels):
-        if pred.strip() == true.strip():
-            correct += 1
-        total += 1
-    accuracy = correct / total
-    return {"accuracy": accuracy}
+    # correct = 0
+    # total = 0
+    # for pred, true in zip(preds, labels):
+    #     if pred.strip() == true.strip():
+    #         correct += 1
+    #     total += 1
+    # accuracy = correct / total
+    # return {"accuracy": accuracy}
 
 
 valid_data = tokenize_dataset(dataset["validation"])

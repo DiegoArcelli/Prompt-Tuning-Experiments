@@ -65,7 +65,7 @@ def tokenize_dataset(data):
 train_data = tokenize_dataset(dataset["train"])
 test_data = tokenize_dataset(dataset["test"])
 
-val_split = 0.1
+val_split = 0.2
 val_size = int(len(train_data)*val_split)
 
 train_data = Dataset.from_list(train_data)
