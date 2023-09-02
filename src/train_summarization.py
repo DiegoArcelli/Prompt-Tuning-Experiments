@@ -34,6 +34,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 metric = evaluate.load("rouge")
 dataset = load_dataset("billsum")
 
+max_text_length = 1024
+max_summary_length = 128
 
 model, tokenizer = load_model(mode=mode, model_type="generation", model_name="t5-small")
 
@@ -43,8 +45,8 @@ def tokenize_dataset(data):
     with tqdm(total=len(data)) as pbar:
         for idx, data in enumerate(data):
             record = {}
-            tokenized_text = tokenizer(data["text"], max_length=None, truncation=True, return_tensors='pt')
-            tokenized_summary = tokenizer(data["summary"], max_length=None, truncation=True, return_tensors='pt')
+            tokenized_text = tokenizer(data["text"], max_length=max_text_length, truncation=True, return_tensors='pt')
+            tokenized_summary = tokenizer(data["summary"], max_length=max_text_length, truncation=True, return_tensors='pt')
 
             for key in tokenized_text.keys():
                 tokenized_text[key] = tokenized_text[key][0]

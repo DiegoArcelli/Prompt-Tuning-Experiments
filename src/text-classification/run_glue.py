@@ -540,7 +540,10 @@ def main():
             predict_dataset = predict_dataset.select(range(max_predict_samples))
 
     test_size = int(len(train_dataset)*data_args.test_split)
-    train_test_set = train_dataset.train_test_split(test_size, stratify_by_column="label", seed=42)
+    if data_args.task_name != "stsb":
+        train_test_set = train_dataset.train_test_split(test_size, stratify_by_column="label", seed=42)
+    else:
+        train_test_set = train_dataset.train_test_split(test_size, seed=42)
     train_dataset = train_test_set["train"]
     test_dataset = train_test_set["test"]
 
