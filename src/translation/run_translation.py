@@ -119,10 +119,6 @@ class ModelArguments:
         },
     )
 
-    train_type: Optional[str] = field(
-        default="normal", metadata={"help": "Used to choose between fine-tuning, prompt-tuninig and prefix-tuning"}
-    )
-
 
 @dataclass
 class DataTrainingArguments:
@@ -250,6 +246,10 @@ class DataTrainingArguments:
                 " be the target language token.(Usually it is the target language token)"
             )
         },
+    )
+
+    train_type: Optional[str] = field(
+        default="normal", metadata={"help": "Used to choose between fine-tuning, prompt-tuninig and prefix-tuning"}
     )
 
     def __post_init__(self):
