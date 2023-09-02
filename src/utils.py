@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, default_data_collator, get_linear_schedule_with_warmup, AutoModelForSequenceClassification
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, default_data_collator, get_linear_schedule_with_warmup, AutoModelForSequenceClassification, AutoModelForCausalLM
 from peft import get_peft_config, get_peft_model, get_peft_model_state_dict, PrefixTuningConfig, TaskType, PromptTuningConfig, PromptEncoderConfig
 from peft import PromptEncoderConfig, PromptEncoder
 
@@ -11,6 +11,8 @@ def load_model(model_type="generation", model_name="t5-small", mode="normal", nu
             model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
         elif model_type == "sequence_classification":
             model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2)
+        elif model_type == "translation":
+            model = AutoModelForCausalLM.from_pretrained(model_name)
 
     elif mode == "prompt":
         if model_type == "generation":
@@ -33,6 +35,10 @@ def load_model(model_type="generation", model_name="t5-small", mode="normal", nu
                 if "classifier" in n:
                     p.requires_grad = True
             model.print_trainable_parameters()
+        elif model_type == "translation":
+            model = AutoModelForCausalLM.from_pretrained(model_name)
+            model = get_peft_model(model, peft_config)
+            model.print_trainable_parameters()
 
     elif mode == "prefix":
         if model_type == "generation":
@@ -52,6 +58,11 @@ def load_model(model_type="generation", model_name="t5-small", mode="normal", nu
             model = AutoModelForSequenceClassification.from_pretrained(model_name, return_dict=True, num_labels=2)
             model = get_peft_model(model, peft_config)
             model.print_trainable_parameters()
+        elif model_type == "translation":
+            model = AutoModelForCausalLM.from_pretrained(model_name)
+            model = get_peft_model(model, peft_config)
+            model.print_trainable_parameters()
+        
 
     if train_classifier and mode != "normal":
         for n, p in model.named_parameters():

@@ -37,7 +37,7 @@ metric = evaluate.load("sacrebleu")
 
 max_source_length = 1024
 max_target_lenght = 1024
-model, tokenizer = load_model(mode=mode, model_type="generation", model_name="gpt2")
+model, tokenizer = load_model(mode=mode, model_type="translation", model_name="gpt2")
 
 data_set = AnkiDatasetFactory(
             f"/content/Prompt-Tuning-NML/dataset/ita.txt",
