@@ -13,10 +13,9 @@ from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, default_data_coll
 from peft import get_peft_config, get_peft_model, get_peft_model_state_dict, PrefixTuningConfig, TaskType
 from utils import load_model
 import argparse
-from nmt_datasets import AnkiDatasetFactory
 
 
-parser = argparse.ArgumentParser( prog='Train translatio', description='Train translatio')
+parser = argparse.ArgumentParser( prog='Train GLUE', description='Train GLUE')
 parser.add_argument('-m', '--mode', default="normal", type=str)    
 parser.add_argument('-lr', '--learning_rate', default=2e-5, type=float)
 parser.add_argument('-e', '--epochs', default=4, type=int)
@@ -32,35 +31,43 @@ batch_size = args.batch_size
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-metric = evaluate.load("sacrebleu")
-# dataset = load_dataset("billsum")
+bleu = evaluate.load("sacrebleu")
+rouge = evaluate.load("rouge")
+dataset = load_dataset("e2e_nlg")
 
-max_source_length = 1024
-max_target_lenght = 1024
-model, tokenizer = load_model(mode=mode, model_type="translation", model_name="gpt2")
+max_text_length = 128
+max_table_length = 128
 
-data_set = AnkiDatasetFactory(
-            f"/content/Prompt-Tuning-NML/dataset/ita.txt",
-            tokenizer,
-            tokenizer,
-            1024,
-            1024,
-            subsample=True,
-            frac=1.0,
-            seed=42,
-            lang="ita"
-        )
+model, tokenizer = load_model(mode=mode, model_type="generation", model_name="t5-small")
 
-train_data = data_set.train_val_data["train"]
-valid_data = data_set.train_val_data["test"]
-test_data = data_set.test_data["test"]
+def tokenize_dataset(data):
 
-val_split = 0.2
-val_size = int(len(train_data)*val_split)
+    records = []
+    with tqdm(total=len(data)) as pbar:
+        for idx, data in enumerate(data):
+            record = {}
+            tokenized_text = tokenizer(data["meaning_representation"], max_length=max_text_length, truncation=True, return_tensors='pt')
+            tokenized_summary = tokenizer(data["human_reference"], max_length=max_text_length, truncation=True, return_tensors='pt')
 
-train_data = Dataset.from_list(train_data)
-test_data = Dataset.from_list(test_data)
-train_val_data = train_data.train_test_split(test_size=val_size)
+            for key in tokenized_text.keys():
+                tokenized_text[key] = tokenized_text[key][0]
+                tokenized_summary[key] = tokenized_summary[key][0]
+
+            record["id"] = idx
+
+            record["input_ids"] = tokenized_text.input_ids
+            record["attention_mask"] = tokenized_text.attention_mask
+            record["labels"] = tokenized_summary.input_ids
+            records.append(record)
+            
+            pbar.update(1)
+
+        return records
+
+
+train_data = tokenize_dataset(dataset["train"])
+test_data = tokenize_dataset(dataset["test"])
+valid_data = tokenize_dataset(dataset["validation"])
 
 
 def postprocess_text(preds, labels):
@@ -81,12 +88,14 @@ def compute_metrics(eval_preds):
 
     decoded_preds, decoded_labels = postprocess_text(decoded_preds, decoded_labels)
 
-    result = metric.compute(predictions=decoded_preds, references=decoded_labels)
+    result_rouge = rouge.compute(predictions=decoded_preds, references=decoded_labels)
+    result_bleu = bleu.compute(predictions=decoded_preds, references=decoded_labels)
+    result = {"rouge": result_rouge, "bleu": result_bleu}
     # result = {"bleu": result["score"]}
 
     prediction_lens = [np.count_nonzero(pred != tokenizer.pad_token_id) for pred in preds]
     result["gen_len"] = np.mean(prediction_lens)
-    result = {k: round(v, 4) for k, v in result.items()}
+    # result = {k: round(v, 4) for k, v in result.items()}
     return result
 
 
@@ -121,8 +130,8 @@ training_args = Seq2SeqTrainingArguments(
 trainer = Seq2SeqTrainerPrompt(
     model=model,
     args=training_args,
-    train_dataset=train_val_data["train"],
-    eval_dataset=train_val_data["test"],
+    train_dataset=train_data,
+    eval_dataset=valid_data,
     tokenizer=tokenizer,
     data_collator=data_collator,
     compute_metrics=compute_metrics,
@@ -130,8 +139,8 @@ trainer = Seq2SeqTrainerPrompt(
 
 trainer.train()
 
-train_results = trainer.evaluate(train_val_data["train"])
-valid_results = trainer.evaluate(train_val_data["test"])
+train_results = trainer.evaluate(train_data)
+valid_results = trainer.evaluate(valid_data)
 test_results = trainer.evaluate(test_data)
 
 print(train_results)
