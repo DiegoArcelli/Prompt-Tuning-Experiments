@@ -46,7 +46,7 @@ def tokenize_dataset(data):
     with tqdm(total=len(data)) as pbar:
         for idx, data in enumerate(data):
             record = {}
-            tokenized_text = tokenizer(data["meaning_representation"], max_length=max_text_length, truncation=True, return_tensors='pt')
+            tokenized_text = tokenizer("summarize table: " + data["meaning_representation"], max_length=max_text_length, truncation=True, return_tensors='pt')
             tokenized_summary = tokenizer(data["human_reference"], max_length=max_text_length, truncation=True, return_tensors='pt')
 
             for key in tokenized_text.keys():
