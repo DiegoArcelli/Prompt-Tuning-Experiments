@@ -3,7 +3,7 @@ import numpy as np
 from transformers import AutoTokenizer
 from glue_config import glue_config
 
-for task in ["qqp"]:
+for task in ["stsb"]:
     print(task)
     tokenizer = AutoTokenizer.from_pretrained("bert-base-cased")
     dataset = load_dataset("glue", task)

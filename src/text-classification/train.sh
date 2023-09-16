@@ -1,5 +1,0 @@
-python3.9 run_glue.py   --model_name_or_path bert-base-cased   --task_name qqp   --do_train   --do_eval --max_seq_length 512   --per_device_train_batch_size 16   --learning_rate 2e-5   --num_train_epochs 3   --output_dir /tmp/qqp_normal/ --train_type normal --overwrite_output_dir --fp16 --test_split 0.2 > output_normal_qqp;
-
-python3.9 run_glue.py   --model_name_or_path bert-base-cased   --task_name qqp   --do_train   --do_eval --max_seq_length 512   --per_device_train_batch_size 16   --learning_rate 2e-2   --num_train_epochs 3   --output_dir /tmp/qqp_prefix/ --train_type prefix --overwrite_output_dir --fp16 --test_split 0.2 > output_prefix_qqp;
-
-python3.9 run_glue.py   --model_name_or_path bert-base-cased   --task_name qqp   --do_train   --do_eval --max_seq_length 512   --per_device_train_batch_size 16   --learning_rate 2e-3   --num_train_epochs 3   --output_dir /tmp/qqp_prompt/ --train_type prompt -overwrite_output_dir --fp16 --test_split 0.2 > output_prompt_qqp;

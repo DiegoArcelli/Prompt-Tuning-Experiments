@@ -1,3 +1,5 @@
+import sys
+sys.path.append("./../")
 from transformers import T5ForConditionalGeneration, Seq2SeqTrainer, Seq2SeqTrainingArguments
 from transformers import AutoTokenizer, T5Tokenizer
 import evaluate
@@ -31,11 +33,12 @@ batch_size = args.batch_size
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-metric = evaluate.load("rouge")
-dataset = load_dataset("billsum")
+bleu = evaluate.load("sacrebleu")
+rouge = evaluate.load("rouge")
+dataset = load_dataset("e2e_nlg")
 
-max_text_length = 1024
-max_summary_length = 128
+max_text_length = 128
+max_table_length = 128
 
 model, tokenizer = load_model(mode=mode, model_type="generation", model_name="t5-small")
 
@@ -45,8 +48,8 @@ def tokenize_dataset(data):
     with tqdm(total=len(data)) as pbar:
         for idx, data in enumerate(data):
             record = {}
-            tokenized_text = tokenizer("summarize: " + data["text"], max_length=max_text_length, truncation=True, return_tensors='pt')
-            tokenized_summary = tokenizer(data["summary"], max_length=max_text_length, truncation=True, return_tensors='pt')
+            tokenized_text = tokenizer("summarize table: " + data["meaning_representation"], max_length=max_text_length, truncation=True, return_tensors='pt')
+            tokenized_summary = tokenizer(data["human_reference"], max_length=max_text_length, truncation=True, return_tensors='pt')
 
             for key in tokenized_text.keys():
                 tokenized_text[key] = tokenized_text[key][0]
@@ -58,7 +61,7 @@ def tokenize_dataset(data):
             record["attention_mask"] = tokenized_text.attention_mask
             record["labels"] = tokenized_summary.input_ids
             records.append(record)
-
+            
             pbar.update(1)
 
         return records
@@ -66,13 +69,7 @@ def tokenize_dataset(data):
 
 train_data = tokenize_dataset(dataset["train"])
 test_data = tokenize_dataset(dataset["test"])
-
-val_split = 0.2
-val_size = int(len(train_data)*val_split)
-
-train_data = Dataset.from_list(train_data)
-test_data = Dataset.from_list(test_data)
-train_val_data = train_data.train_test_split(test_size=val_size)
+valid_data = tokenize_dataset(dataset["validation"])
 
 
 def postprocess_text(preds, labels):
@@ -93,12 +90,14 @@ def compute_metrics(eval_preds):
 
     decoded_preds, decoded_labels = postprocess_text(decoded_preds, decoded_labels)
 
-    result = metric.compute(predictions=decoded_preds, references=decoded_labels)
+    result_rouge = rouge.compute(predictions=decoded_preds, references=decoded_labels)
+    result_bleu = bleu.compute(predictions=decoded_preds, references=decoded_labels)
+    result = {"rouge": result_rouge, "bleu": result_bleu}
     # result = {"bleu": result["score"]}
 
     prediction_lens = [np.count_nonzero(pred != tokenizer.pad_token_id) for pred in preds]
     result["gen_len"] = np.mean(prediction_lens)
-    result = {k: round(v, 4) for k, v in result.items()}
+    # result = {k: round(v, 4) for k, v in result.items()}
     return result
 
 
@@ -133,8 +132,8 @@ training_args = Seq2SeqTrainingArguments(
 trainer = Seq2SeqTrainerPrompt(
     model=model,
     args=training_args,
-    train_dataset=train_val_data["train"],
-    eval_dataset=train_val_data["test"],
+    train_dataset=train_data,
+    eval_dataset=valid_data,
     tokenizer=tokenizer,
     data_collator=data_collator,
     compute_metrics=compute_metrics,
@@ -142,8 +141,8 @@ trainer = Seq2SeqTrainerPrompt(
 
 trainer.train()
 
-train_results = trainer.evaluate(train_val_data["train"])
-valid_results = trainer.evaluate(train_val_data["test"])
+train_results = trainer.evaluate(train_data)
+valid_results = trainer.evaluate(valid_data)
 test_results = trainer.evaluate(test_data)
 
 print(train_results)

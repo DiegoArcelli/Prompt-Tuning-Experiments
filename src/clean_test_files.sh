@@ -1,2 +1,0 @@
-rm images/*;
-rm checkpoints/*;

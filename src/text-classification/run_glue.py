@@ -597,6 +597,7 @@ def main():
             checkpoint = training_args.resume_from_checkpoint
         elif last_checkpoint is not None:
             checkpoint = last_checkpoint
+        print(model)
         train_result = trainer.train(resume_from_checkpoint=checkpoint)
         metrics = train_result.metrics
         max_train_samples = (

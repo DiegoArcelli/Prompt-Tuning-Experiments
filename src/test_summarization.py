@@ -1,9 +1,18 @@
 from datasets import load_dataset
 from transformers import AutoTokenizer
 
-dataset = load_dataset("glue", "stsb")
+dataset = load_dataset("billsum")
 tokenizer = AutoTokenizer.from_pretrained("bert-base-cased")
 
+
+# print(dataset["train"][0]["text"])
+# print("=================================")
+# print(dataset["train"][0]["summary"])
+# print("=================================")
+# print(dataset["train"][0]["title"])
+
+print(len(dataset["train"]))
+print(len(dataset["test"]))
 
 for data_set_name in dataset.keys():
     print(data_set_name)
