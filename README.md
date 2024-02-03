@@ -1,4 +1,4 @@
-# Neural-Machine-Translation
+# Prompt-Tuning-Experiments
 Code to train some NLP models on different downstream tasks using fine-tuning, prompt-tuning and prefix-tuning. 
 The considered task are:
 - Predict whether two questions have the same meaning using the Quora
